@@ -6,7 +6,6 @@ import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
-import { projectId, publicAnonKey } from './utils/supabase/info';
 
 export default function App() {
   const [currentRecipe, setCurrentRecipe] = useState(null);
@@ -16,53 +15,22 @@ export default function App() {
   const [noNuts, setNoNuts] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [communityRecipes, setCommunityRecipes] = useState([]);
+  const [userRecipes, setUserRecipes] = useState(() => {
+    const saved = localStorage.getItem('smoothie-user-recipes');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [favorites, setFavorites] = useState<Set<number | string>>(() => {
     const saved = localStorage.getItem('smoothie-favorites');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
 
-  // Fetch community recipes on mount
+  // Combine default and user recipes
+  const allRecipes = [...defaultRecipes, ...userRecipes];
+
+  // Save user recipes to localStorage whenever they change
   useEffect(() => {
-    fetchCommunityRecipes();
-  }, []);
-
-  const fetchCommunityRecipes = async () => {
-    try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-9f7fc7bb/recipes`,
-        {
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-          },
-        }
-      );
-      const data = await response.json();
-      if (data.recipes) {
-        setCommunityRecipes(data.recipes);
-      }
-    } catch (error) {
-      console.error('Error fetching community recipes:', error);
-    }
-  };
-
-  // Combine default and community recipes
-  const allRecipes = [
-    ...defaultRecipes,
-    ...communityRecipes.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      contributor: r.contributor,
-      emoji: r.emoji,
-      color: r.color,
-      ingredients: r.ingredients,
-      instructions: r.instructions,
-      servings: r.servings,
-      prepTime: r.prepTime,
-      containsFat: r.containsFat,
-      containsNuts: r.containsNuts,
-    })),
-  ];
+    localStorage.setItem('smoothie-user-recipes', JSON.stringify(userRecipes));
+  }, [userRecipes]);
 
   useEffect(() => {
     localStorage.setItem('smoothie-favorites', JSON.stringify(Array.from(favorites)));
@@ -82,45 +50,19 @@ export default function App() {
 
   const handleSubmitRecipe = async (recipe: any) => {
     try {
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/make-server-9f7fc7bb/recipes`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${publicAnonKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(recipe),
-        }
-      );
-
-      const data = await response.json();
+      // Generate a unique ID for the recipe
+      const newRecipe = {
+        ...recipe,
+        id: `user-${Date.now()}`,
+      };
       
-      if (data.success) {
-        // Refresh the community recipes
-        await fetchCommunityRecipes();
-        
-        // Show the new recipe
-        const newRecipe = data.recipe;
-        const formattedRecipe = {
-          id: newRecipe.id,
-          name: newRecipe.name,
-          contributor: newRecipe.contributor,
-          emoji: newRecipe.emoji,
-          color: newRecipe.color,
-          ingredients: newRecipe.ingredients,
-          instructions: newRecipe.instructions,
-          servings: newRecipe.servings,
-          prepTime: newRecipe.prepTime,
-          containsFat: newRecipe.containsFat,
-          containsNuts: newRecipe.containsNuts,
-        };
-        setCurrentRecipe(formattedRecipe);
-        
-        return true;
-      } else {
-        return false;
-      }
+      // Add to user recipes
+      setUserRecipes(prev => [...prev, newRecipe]);
+      
+      // Show the new recipe
+      setCurrentRecipe(newRecipe);
+      
+      return true;
     } catch (error) {
       console.error('Error submitting recipe:', error);
       return false;
