@@ -1,4 +1,3 @@
-import { projectId as fallbackProjectId, publicAnonKey as fallbackAnonKey } from './info';
 
 export interface CommunityRecipe {
   id: string;
@@ -19,17 +18,14 @@ const envProjectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID as strin
 const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
 const envAnon = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-const resolvedProjectId = envProjectId || fallbackProjectId;
-const resolvedAnonKey = envAnon || fallbackAnonKey;
-
 const baseUrl = envUrl
   ? `${envUrl}/functions/v1/server/make-server-9f7fc7bb/recipes`
-  : `https://${resolvedProjectId}.supabase.co/functions/v1/server/make-server-9f7fc7bb/recipes`;
+  : `https://${envProjectId}.supabase.co/functions/v1/server/make-server-9f7fc7bb/recipes`;
 
 const defaultHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
-  apikey: resolvedAnonKey,
-  Authorization: `Bearer ${resolvedAnonKey}`,
+  apikey: envAnon ?? '',
+  Authorization: `Bearer ${envAnon ?? ''}`,
 };
 
 export async function fetchCommunityRecipes(): Promise<CommunityRecipe[]> {
