@@ -6,6 +6,7 @@ import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
+import { fetchCommunityRecipes, submitCommunityRecipe } from './utils/supabase/community';
 
 export default function App() {
   const [currentRecipe, setCurrentRecipe] = useState(null);
@@ -23,9 +24,10 @@ export default function App() {
     const saved = localStorage.getItem('smoothie-favorites');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
+  const [communityRecipes, setCommunityRecipes] = useState<any[]>([]);
 
-  // Combine default and user recipes
-  const allRecipes = [...defaultRecipes, ...userRecipes];
+  // Combine default, community and local user recipes (fallback)
+  const allRecipes = [...defaultRecipes, ...communityRecipes, ...userRecipes];
 
   // Save user recipes to localStorage whenever they change
   useEffect(() => {
@@ -35,6 +37,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('smoothie-favorites', JSON.stringify(Array.from(favorites)));
   }, [favorites]);
+
+  // Load community recipes from Supabase function
+  useEffect(() => {
+    fetchCommunityRecipes()
+      .then((recipes) => setCommunityRecipes(recipes))
+      .catch((err) => {
+        console.error('Failed to load community recipes:', err);
+      });
+  }, []);
 
   const toggleFavorite = (recipeId: number | string) => {
     setFavorites(prev => {
@@ -50,22 +61,16 @@ export default function App() {
 
   const handleSubmitRecipe = async (recipe: any) => {
     try {
-      // Generate a unique ID for the recipe
-      const newRecipe = {
-        ...recipe,
-        id: `user-${Date.now()}`,
-      };
-      
-      // Add to user recipes
-      setUserRecipes(prev => [...prev, newRecipe]);
-      
-      // Show the new recipe
-      setCurrentRecipe(newRecipe);
-      
+      const created = await submitCommunityRecipe(recipe);
+      setCommunityRecipes((prev) => [...prev, created]);
+      setCurrentRecipe(created);
       return true;
     } catch (error) {
-      console.error('Error submitting recipe:', error);
-      return false;
+      console.error('Error submitting recipe to Supabase, falling back to local:', error);
+      const fallbackRecipe = { ...recipe, id: `user-${Date.now()}` };
+      setUserRecipes((prev) => [...prev, fallbackRecipe]);
+      setCurrentRecipe(fallbackRecipe);
+      return true;
     }
   };
 

@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { Heart } from 'lucide-react';
 
 interface Recipe {
-  id: number;
+  id: number | string;
   name: string;
   contributor: string;
   emoji: string;
@@ -16,7 +16,7 @@ interface Recipe {
 interface RecipeCardProps {
   recipe: Recipe;
   isFavorite: boolean;
-  onToggleFavorite: (id: number) => void;
+  onToggleFavorite: (id: number | string) => void;
 }
 
 export function RecipeCard({ recipe, isFavorite, onToggleFavorite }: RecipeCardProps) {

@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+
+# Local env files
+.env
+.env.*
+
+# OS / Editor
+.DS_Store
+*.log
+
+# Sensitive Supabase info file (fallback only)
+src/utils/supabase/info.tsx
+
