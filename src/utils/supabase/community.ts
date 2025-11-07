@@ -19,8 +19,8 @@ const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
 const envAnon = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 const baseUrl = envUrl
-  ? `${envUrl}/functions/v1/server/make-server-9f7fc7bb/recipes`
-  : `https://${envProjectId}.supabase.co/functions/v1/server/make-server-9f7fc7bb/recipes`;
+  ? `${envUrl}/functions/v1/recipes`
+  : `https://${envProjectId}.supabase.co/functions/v1/recipes`;
 
 const defaultHeaders: Record<string, string> = {
   'Content-Type': 'application/json',
