@@ -13,7 +13,8 @@
  
  1. Push this repository to GitHub (or GitLab/Bitbucket).
  2. In Vercel, import the repository. Vercel will auto-detect Vite.
- 3. Configure Environment Variables in Vercel (Project Settings → Environment Variables):
+ 3. Set Env Vars to not share them
+ 4. Configure Environment Variables in Vercel (Project Settings → Environment Variables):
  
     - `VITE_SUPABASE_URL` = `https://<project-id>.supabase.co`
     - `VITE_SUPABASE_PROJECT_ID` = `<project-id>`
