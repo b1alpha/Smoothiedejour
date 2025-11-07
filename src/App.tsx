@@ -208,7 +208,24 @@ export default function App() {
                 transition={{ duration: 0.5 }}
                 className="text-6xl"
               >
-                🌪️
+                <svg
+                  width="64"
+                  height="64"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-purple-600"
+                  aria-label="Blender"
+                >
+                  <rect x="7" y="3" width="10" height="9" rx="2" />
+                  <path d="M9 3v2m6-2v2" />
+                  <path d="M8 12h8l-1 5H9l-1-5z" />
+                  <circle cx="12" cy="16" r="1.5" />
+                  <path d="M9 21h6" />
+                </svg>
               </motion.div>
             )}
             {currentRecipe && !isShaking && (
