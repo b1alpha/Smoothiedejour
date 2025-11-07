@@ -16,3 +16,6 @@ dist/
 # Sensitive Supabase info file (fallback only)
 src/utils/supabase/info.tsx
 
+# Supabase local metadata
+supabase/.temp/
+
