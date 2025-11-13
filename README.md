@@ -9,7 +9,7 @@ A community-driven smoothie recipe app built with React, Vite, and TypeScript.
 - Node.js (v18 or higher recommended)
 - npm or yarn
 
-### Local Development Setup
+### Installation
 
 1. **Clone the repository**
    ```bash
@@ -22,16 +22,134 @@ A community-driven smoothie recipe app built with React, Vite, and TypeScript.
    npm install
    ```
 
-3. **Start the development server**
+### Running the Development Server
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The server will start on `http://localhost:3000` (configured in `vite.config.ts`). The terminal will display the exact URL when the server is ready. Open your browser and navigate to the displayed URL.
+
+### Building for Production
+
+To create a production build:
+
+```bash
+npm run build
+```
+
+The built files will be in the `build/` directory. You can preview the production build locally by serving the `build` directory with a static file server.
+
+## Available Scripts
+
+- `npm run dev` - Start the development server
+- `npm run build` - Build the app for production
+- `npm run lint` - Run ESLint to check for code quality issues
+- `npm run lint:fix` - Run ESLint and automatically fix fixable issues
+- `npm run test` - Run tests in watch mode (recommended during development)
+- `npm run test:run` - Run tests once and exit (used in CI/pre-commit)
+- `npm run test:ui` - Run tests with Vitest UI
+
+## Testing
+
+The project includes a comprehensive test suite using Vitest and React Testing Library. Tests cover utility functions, components, and integration scenarios.
+
+```bash
+# Run tests in watch mode (recommended during development)
+npm run test
+
+# Run tests once (used in CI/pre-commit)
+npm run test:run
+
+# Run tests with UI
+npm run test:ui
+```
+
+**Pre-commit hooks:** This project uses Husky to run ESLint and tests before each commit. If linting or tests fail, the commit will be blocked. Make sure to run `npm run lint` and `npm run test:run` before committing to catch issues early.
+
+## Contributing
+
+### Making Changes
+
+1. **Create a new branch**
    ```bash
-   npm run dev
+   git checkout -b your-feature-name
    ```
    
-   The server will start on `http://localhost:3000` (configured in `vite.config.ts`). The terminal will display the exact URL when the server is ready.
+   Use descriptive branch names like:
+   - `feature/add-recipe-filter`
+   - `fix/recipe-card-styling`
+   - `docs/update-readme`
 
-4. **Open your browser**
+2. **Make your changes**
    
-   Navigate to `http://localhost:3000` or use the URL shown in your terminal.
+   - Write clean, readable code
+   - Follow the existing code style
+   - Test your changes locally
+   - Run `npm run lint` to check for issues
+   - Run `npm run test:run` to ensure tests pass
+
+3. **Commit your changes**
+   ```bash
+   git add .
+   git commit -m "Description of your changes"
+   ```
+   
+   Write clear, descriptive commit messages. Note that pre-commit hooks will automatically run linting and tests. If they fail, the commit will be blocked.
+
+4. **Push your branch**
+   ```bash
+   git push origin your-feature-name
+   ```
+
+5. **Create a Pull Request**
+   
+   - Push your branch to the remote repository
+   - Open a pull request on GitHub (or your Git hosting platform)
+   - Provide a clear description of what your changes do and why
+   - Wait for review and feedback
+
+### Development Tips
+
+- The app uses React 18 with TypeScript
+- Styling is done with Tailwind CSS
+- UI components are from Radix UI
+- Run `npm run build` to test the production build locally
+- Use `npm run lint:fix` to automatically fix some linting issues
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      Frontend                           │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  React 18 + TypeScript                                   │
+│       │                                                  │
+│       ├──► Vite (Build Tool)                            │
+│       ├──► Tailwind CSS (Styling)                       │
+│       ├──► Radix UI (Components)                        │
+│       ├──► Motion (Animations)                          │
+│       └──► Lucide React (Icons)                         │
+│                                                          │
+└───────────────────┬─────────────────────────────────────┘
+                    │
+                    │ HTTP Requests
+                    │
+┌───────────────────▼─────────────────────────────────────┐
+│                      Backend                            │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Supabase Edge Functions                                │
+│       │                                                  │
+│       ├──► Hono Framework                              │
+│       └──► PostgreSQL Database                          │
+│            (Store/Fetch Recipes)                         │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
 
 
 ## Technology Stack
@@ -81,111 +199,3 @@ This project leverages a modern, type-safe tech stack designed for performance a
 #### PostgreSQL
 - **What it does:** A powerful, open-source relational database management system.
 - **Why we use it:** PostgreSQL provides ACID compliance, complex query capabilities, JSON support, and excellent performance. Supabase's managed PostgreSQL includes additional features like real-time subscriptions, automatic backups, and connection pooling, making it ideal for storing and querying community recipe data.
-
-### Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      Frontend                           │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  React 18 + TypeScript                                   │
-│       │                                                  │
-│       ├──► Vite (Build Tool)                            │
-│       ├──► Tailwind CSS (Styling)                       │
-│       ├──► Radix UI (Components)                        │
-│       ├──► Motion (Animations)                          │
-│       └──► Lucide React (Icons)                         │
-│                                                          │
-└───────────────────┬─────────────────────────────────────┘
-                    │
-                    │ HTTP Requests
-                    │
-┌───────────────────▼─────────────────────────────────────┐
-│                      Backend                            │
-├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  Supabase Edge Functions                                │
-│       │                                                  │
-│       ├──► Hono Framework                              │
-│       └──► PostgreSQL Database                          │
-│            (Store/Fetch Recipes)                         │
-│                                                          │
-└─────────────────────────────────────────────────────────┘
-```
-
-
-## Contributing
-
-### Making Changes
-
-1. **Create a new branch**
-   ```bash
-   git checkout -b your-feature-name
-   ```
-   
-   Use descriptive branch names like:
-   - `feature/add-recipe-filter`
-   - `fix/recipe-card-styling`
-   - `docs/update-readme`
-
-2. **Make your changes**
-   
-   - Write clean, readable code
-   - Follow the existing code style
-   - Test your changes locally
-
-3. **Commit your changes**
-   ```bash
-   git add .
-   git commit -m "Description of your changes"
-   ```
-   
-   Write clear, descriptive commit messages.
-
-4. **Push your branch**
-   ```bash
-   git push origin your-feature-name
-   ```
-
-5. **Create a Pull Request**
-   
-   - Push your branch to the remote repository
-   - Open a pull request on GitHub (or your Git hosting platform)
-   - Provide a clear description of what your changes do and why
-   - Wait for review and feedback
-
-### Development Tips
-
-- The app uses React with TypeScript
-- Styling is done with Tailwind CSS
-- UI components are from Radix UI
-- Run `npm run build` to test the production build locally
-- **Pre-commit hooks:** This project uses Husky to run ESLint and tests before each commit. If linting or tests fail, the commit will be blocked. Run `npm run lint` manually to check for issues, or `npm run lint:fix` to automatically fix some issues.
-- **Testing:** The project includes a comprehensive test suite using Vitest and React Testing Library. Tests cover utility functions, components, and integration scenarios.
-
-## Available Scripts
-
-- `npm run dev` - Start the development server
-- `npm run build` - Build the app for production
-- `npm run lint` - Run ESLint to check for code quality issues
-- `npm run lint:fix` - Run ESLint and automatically fix fixable issues
-- `npm run test` - Run tests in watch mode
-- `npm run test:run` - Run tests once and exit
-- `npm run test:ui` - Run tests with Vitest UI
-
-## Testing
-
-
-```bash
-# Run tests in watch mode (recommended during development)
-npm run test
-
-# Run tests once (used in CI/pre-commit)
-npm run test:run
-
-# Run tests with UI
-npm run test:ui
-```
-
-Tests are automatically run before each commit via the pre-commit hook. All tests must pass for commits to succeed, ensuring code quality and preventing regressions.
