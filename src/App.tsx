@@ -29,6 +29,7 @@ export default function App() {
   });
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipe[]>([]);
   const [communityRecipesLoadFailed, setCommunityRecipesLoadFailed] = useState(false);
+  const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
 
   // Combine recipes: only include defaults if community recipes failed to load (no network)
   // Otherwise, show community recipes + user recipes
@@ -52,15 +53,18 @@ export default function App() {
 
   // Load community recipes from Supabase function
   useEffect(() => {
+    setIsLoadingRecipes(true);
     fetchCommunityRecipes()
       .then((recipes) => {
         setCommunityRecipes(recipes);
         setCommunityRecipesLoadFailed(false);
+        setIsLoadingRecipes(false);
       })
       .catch((err) => {
         console.error('Failed to load community recipes:', err);
         // Mark as failed so we show defaults as fallback
         setCommunityRecipesLoadFailed(true);
+        setIsLoadingRecipes(false);
       });
   }, []);
 
@@ -322,13 +326,25 @@ export default function App() {
                 onSelectRecipe={handleSelectRecipe}
               />
             )}
-            {!selectedContributor && !currentRecipe && !isShaking && (
+            {!selectedContributor && !currentRecipe && !isShaking && !isLoadingRecipes && (
               <ShakeInstruction 
                 key="instruction" 
                 onManualShake={handleManualShake} 
                 hasFilters={filteredCount === 0}
                 favoritesOnly={favoritesOnly}
               />
+            )}
+            {isLoadingRecipes && !selectedContributor && !currentRecipe && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center"
+              >
+                <div className="text-6xl mb-4 animate-pulse">🥤</div>
+                <p className="text-gray-600">Loading recipes...</p>
+              </motion.div>
             )}
             {isShaking && (
               <motion.div
