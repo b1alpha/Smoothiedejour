@@ -53,7 +53,9 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     const recipeId = params.get('recipe');
     if (recipeId && allRecipes.length > 0) {
-      const recipe = allRecipes.find(r => String(r.id) === recipeId);
+      // URLSearchParams.get() automatically decodes the value
+      const decodedRecipeId = decodeURIComponent(recipeId);
+      const recipe = allRecipes.find(r => String(r.id) === decodedRecipeId);
       if (recipe) {
         setCurrentRecipe(recipe);
         // Clean up URL without reloading

@@ -38,10 +38,10 @@ describe('shareRecipe', () => {
     const result = await shareRecipe(mockRecipe);
 
     expect(result).toBe(true);
+    // Should try text-only first (better for Signal and similar apps)
     expect(mockShare).toHaveBeenCalledWith({
       title: 'Test Smoothie - Smoothie Recipe',
-      text: 'Check out this smoothie recipe: Test Smoothie 🥤 by Test User',
-      url: 'http://localhost:3000/?recipe=1',
+      text: 'Check out this smoothie recipe: Test Smoothie 🥤 by Test User\nhttp://localhost:3000/?recipe=1',
     });
   });
 
