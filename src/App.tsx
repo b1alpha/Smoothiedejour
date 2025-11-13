@@ -7,9 +7,10 @@ import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
 import { fetchCommunityRecipes, submitCommunityRecipe } from './utils/supabase/community';
+import type { Recipe } from './data/recipes';
 
 export default function App() {
-  const [currentRecipe, setCurrentRecipe] = useState(null);
+  const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [shakeCount, setShakeCount] = useState(0);
   const [noFat, setNoFat] = useState(false);
@@ -46,6 +47,20 @@ export default function App() {
         console.error('Failed to load community recipes:', err);
       });
   }, []);
+
+  // Load recipe from URL parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const recipeId = params.get('recipe');
+    if (recipeId && allRecipes.length > 0) {
+      const recipe = allRecipes.find(r => String(r.id) === recipeId);
+      if (recipe) {
+        setCurrentRecipe(recipe);
+        // Clean up URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [allRecipes]);
 
   const toggleFavorite = (recipeId: number | string) => {
     setFavorites(prev => {
