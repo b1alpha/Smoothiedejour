@@ -6,7 +6,7 @@ A community-driven smoothie recipe app built with React, Vite, and TypeScript.
 
 ### Prerequisites
 
-- Node.js (v18 or higher recommended)
+- Node.js (v20 or higher)
 - npm or yarn
 
 ### Installation
@@ -73,7 +73,7 @@ npm run test:ui
 
 This project uses automated CI/CD pipelines to ensure code quality:
 
-- **GitHub Actions:** Runs linting and tests on every push and pull request to `main`, `master`, and `develop` branches. The workflow tests against Node.js 18.x and 20.x. If linting or tests fail, the PR will be blocked from merging.
+- **GitHub Actions:** Runs linting and tests on every push and pull request to `main`, `master`, and `develop` branches. The workflow tests against Node.js 20.x. If linting or tests fail, the PR will be blocked from merging.
 - **Vercel:** Builds and deploys the application. Since GitHub Actions already validates code quality, Vercel focuses on fast builds and deployments.
 
 You can view the CI status in:
