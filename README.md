@@ -176,23 +176,6 @@ This project leverages a modern, type-safe tech stack designed for performance a
 
 ## Testing
 
-This project includes comprehensive test coverage for all major features:
-
-### Test Coverage
-
-- **Utility Functions** (`src/utils/share.test.ts`): Tests for recipe sharing functionality including Web Share API, clipboard fallback, and error handling
-- **Component Tests**:
-  - `RecipeCard.test.tsx`: Tests for recipe display, favorite toggling, and sharing
-  - `FilterToggles.test.tsx`: Tests for filter functionality (no fat, no nuts, favorites only)
-  - `ContributeRecipeModal.test.tsx`: Tests for recipe submission form and validation
-- **Integration Tests** (`App.test.tsx`): Tests for app-wide functionality including:
-  - Recipe display and filtering
-  - Favorite management
-  - Recipe submission
-  - URL parameter handling
-  - localStorage persistence
-
-### Running Tests
 
 ```bash
 # Run tests in watch mode (recommended during development)
@@ -205,4 +188,4 @@ npm run test:run
 npm run test:ui
 ```
 
-Tests are automatically run before each commit via the pre-commit hook. All 45 tests must pass for commits to succeed, ensuring code quality and preventing regressions.
+Tests are automatically run before each commit via the pre-commit hook. All tests must pass for commits to succeed, ensuring code quality and preventing regressions.
