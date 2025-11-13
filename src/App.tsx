@@ -28,9 +28,18 @@ export default function App() {
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipe[]>([]);
+  const [communityRecipesLoadFailed, setCommunityRecipesLoadFailed] = useState(false);
 
-  // Combine default, community and local user recipes (fallback)
-  const allRecipes = useMemo(() => [...defaultRecipes, ...communityRecipes, ...userRecipes], [communityRecipes, userRecipes]);
+  // Combine recipes: only include defaults if community recipes failed to load (no network)
+  // Otherwise, show community recipes + user recipes
+  const allRecipes = useMemo(() => {
+    if (communityRecipesLoadFailed) {
+      // Community recipes failed to load - show defaults + user recipes as fallback
+      return [...defaultRecipes, ...userRecipes];
+    }
+    // Community recipes loaded successfully (even if empty) - only show community + user recipes
+    return [...communityRecipes, ...userRecipes];
+  }, [communityRecipes, userRecipes, communityRecipesLoadFailed]);
 
   // Save user recipes to localStorage whenever they change
   useEffect(() => {
@@ -44,9 +53,14 @@ export default function App() {
   // Load community recipes from Supabase function
   useEffect(() => {
     fetchCommunityRecipes()
-      .then((recipes) => setCommunityRecipes(recipes))
+      .then((recipes) => {
+        setCommunityRecipes(recipes);
+        setCommunityRecipesLoadFailed(false);
+      })
       .catch((err) => {
         console.error('Failed to load community recipes:', err);
+        // Mark as failed so we show defaults as fallback
+        setCommunityRecipesLoadFailed(true);
       });
   }, []);
 
