@@ -63,7 +63,7 @@ describe('shareRecipe', () => {
     const result = await shareRecipe(mockRecipe);
 
     expect(result).toBe(true);
-    expect(mockWriteText).toHaveBeenCalledWith('http://localhost:3000/?recipe=1');
+    expect(mockWriteText).toHaveBeenCalledWith('Check out this smoothie recipe: Test Smoothie 🥤 by Test User\nhttp://localhost:3000/?recipe=1');
   });
 
   it('should fallback to clipboard when canShare returns false', async () => {
@@ -90,7 +90,7 @@ describe('shareRecipe', () => {
 
     expect(result).toBe(true);
     expect(mockShare).not.toHaveBeenCalled();
-    expect(mockWriteText).toHaveBeenCalledWith('http://localhost:3000/?recipe=1');
+    expect(mockWriteText).toHaveBeenCalledWith('Check out this smoothie recipe: Test Smoothie 🥤 by Test User\nhttp://localhost:3000/?recipe=1');
   });
 
   it('should return false when user cancels Web Share', async () => {
@@ -136,7 +136,7 @@ describe('shareRecipe', () => {
     const result = await shareRecipe(mockRecipe);
 
     expect(result).toBe(true);
-    expect(mockWriteText).toHaveBeenCalled();
+    expect(mockWriteText).toHaveBeenCalledWith('Check out this smoothie recipe: Test Smoothie 🥤 by Test User\nhttp://localhost:3000/?recipe=1');
   });
 
   it('should use execCommand fallback when clipboard API fails', async () => {

@@ -41,15 +41,16 @@ export async function shareRecipe(recipe: { id: number | string; name: string; c
     }
   }
   
-  // Fallback: Copy to clipboard
+  // Fallback: Copy to clipboard (include text + URL)
+  const clipboardText = `${shareText}\n${shareUrl}`;
   try {
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(clipboardText);
     return true;
   } catch (error) {
     console.error('Error copying to clipboard:', error);
     // Last resort: select text
     const textArea = document.createElement('textarea');
-    textArea.value = shareUrl;
+    textArea.value = clipboardText;
     textArea.style.position = 'fixed';
     textArea.style.opacity = '0';
     document.body.appendChild(textArea);
