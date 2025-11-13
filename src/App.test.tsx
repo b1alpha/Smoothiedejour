@@ -16,8 +16,8 @@ describe('App', () => {
     vi.clearAllMocks();
     localStorage.clear();
     
-    // Mock fetchCommunityRecipes to return empty array by default
-    vi.mocked(communityUtils.fetchCommunityRecipes).mockResolvedValue([]);
+    // Mock fetchCommunityRecipes to fail by default (so defaults are shown)
+    vi.mocked(communityUtils.fetchCommunityRecipes).mockRejectedValue(new Error('Network error'));
   });
 
   afterEach(() => {

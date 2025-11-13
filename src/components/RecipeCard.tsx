@@ -19,9 +19,10 @@ interface RecipeCardProps {
   recipe: Recipe;
   isFavorite: boolean;
   onToggleFavorite: (id: number | string) => void;
+  onContributorClick?: (contributor: string) => void;
 }
 
-export function RecipeCard({ recipe, isFavorite, onToggleFavorite }: RecipeCardProps) {
+export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributorClick }: RecipeCardProps) {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -104,7 +105,16 @@ export function RecipeCard({ recipe, isFavorite, onToggleFavorite }: RecipeCardP
         <div className="p-6 text-center" style={{ backgroundColor: `${recipe.color}30` }}>
           <div className="text-6xl mb-3">{recipe.emoji}</div>
           <h3 className="text-gray-800 mb-1">{recipe.name}</h3>
-          <p className="text-sm text-gray-600">by {recipe.contributor}</p>
+          {onContributorClick ? (
+            <button
+              onClick={() => onContributorClick(recipe.contributor)}
+              className="text-sm text-gray-600 hover:text-purple-600 transition-colors underline decoration-dotted"
+            >
+              by {recipe.contributor}
+            </button>
+          ) : (
+            <p className="text-sm text-gray-600">by {recipe.contributor}</p>
+          )}
         </div>
 
         {/* Recipe Info */}
