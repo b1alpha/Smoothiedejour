@@ -223,8 +223,14 @@ export default function App() {
   };
 
   const handleBackToMain = () => {
-    setSelectedContributor(null);
-    setCurrentRecipe(null);
+    // If viewing a recipe from contributor list, go back to contributor list
+    if (currentRecipe && selectedContributor) {
+      setCurrentRecipe(null);
+    } else {
+      // Otherwise, go back to main view
+      setSelectedContributor(null);
+      setCurrentRecipe(null);
+    }
   };
 
   const handleSelectRecipe = (recipe: Recipe | CommunityRecipe) => {
@@ -250,7 +256,7 @@ export default function App() {
                   whileTap={{ scale: 0.9 }}
                   onClick={handleBackToMain}
                   className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                  title="Back to all recipes"
+                  title={currentRecipe ? "Back to contributor recipes" : "Back to all recipes"}
                 >
                   <ArrowLeft className="w-5 h-5 text-purple-600" />
                 </motion.button>
@@ -258,7 +264,7 @@ export default function App() {
                 <div className="w-10"></div>
               )}
               <h1 className="text-4xl">🥤</h1>
-              {!selectedContributor && (
+              {!selectedContributor && !currentRecipe ? (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -268,8 +274,9 @@ export default function App() {
                 >
                   <Plus className="w-5 h-5 text-purple-600" />
                 </motion.button>
+              ) : (
+                <div className="w-10"></div>
               )}
-              {selectedContributor && <div className="w-10"></div>}
             </div>
             <h2 className="text-purple-600">Smoothie de Jour</h2>
             <p className="text-sm text-gray-600 mt-1">
