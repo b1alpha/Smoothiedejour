@@ -9,10 +9,10 @@ app.use('*', cors());
 app.use('*', logger(console.log));
 
 // Health check
-app.get('/health', (c) => c.json({ ok: true }));
+app.get('/recipes/health', (c) => c.json({ ok: true }));
 
-// List community recipes
-app.get('/', async (c) => {
+// List community recipes at /recipes
+app.get('/recipes', async (c) => {
   try {
     const recipes = await kv.getByPrefix('recipe:');
     return c.json({ recipes: recipes || [] });
@@ -22,8 +22,8 @@ app.get('/', async (c) => {
   }
 });
 
-// Create a new recipe
-app.post('/', async (c) => {
+// Create a new recipe at /recipes
+app.post('/recipes', async (c) => {
   try {
     const recipe = await c.req.json();
     if (!recipe.name || !recipe.contributor || !recipe.ingredients || !recipe.instructions) {
@@ -53,9 +53,6 @@ app.post('/', async (c) => {
     return c.json({ error: 'Failed to create recipe' }, 500);
   }
 });
-
-// Catch-all to help debug path/method issues
-app.all('*', (c) => c.json({ ok: true, path: c.req.path, method: c.req.method }));
 
 Deno.serve(app.fetch);
 

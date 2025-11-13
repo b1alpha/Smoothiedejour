@@ -1,5 +1,7 @@
-import { motion } from 'motion/react';
-import { Heart } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Heart, Share2 } from 'lucide-react';
+import { useState } from 'react';
+import { shareRecipe } from '../utils/share';
 
 interface Recipe {
   id: number | string;
@@ -20,6 +22,28 @@ interface RecipeCardProps {
 }
 
 export function RecipeCard({ recipe, isFavorite, onToggleFavorite }: RecipeCardProps) {
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const handleShare = async () => {
+    const success = await shareRecipe(recipe);
+    if (success) {
+      // Check if we used Web Share API (which shows its own UI)
+      if (navigator.share) {
+        // Web Share API was used, no need to show toast
+        return;
+      }
+      // Otherwise, show toast for clipboard copy
+      setToastMessage('Link copied to clipboard!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } else {
+      setToastMessage('Failed to share. Please try again.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    }
+  };
+
   return (
     <motion.div
       initial={{ scale: 0.8, opacity: 0, rotateY: 90 }}
@@ -28,21 +52,47 @@ export function RecipeCard({ recipe, isFavorite, onToggleFavorite }: RecipeCardP
       transition={{ duration: 0.6, type: 'spring' }}
       className="w-full max-w-sm relative"
     >
-      {/* Favorite Button */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => onToggleFavorite(recipe.id)}
-        className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
-      >
-        <Heart
-          className={`w-6 h-6 transition-all ${
-            isFavorite 
-              ? 'fill-red-500 stroke-red-500' 
-              : 'stroke-gray-400 hover:stroke-red-400'
-          }`}
-        />
-      </motion.button>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 bg-gray-900 text-white px-4 py-2 rounded-full text-sm shadow-lg"
+          >
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Action Buttons */}
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={handleShare}
+          className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
+          title="Share recipe"
+        >
+          <Share2 className="w-6 h-6 stroke-gray-600 hover:stroke-purple-600 transition-colors" />
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onToggleFavorite(recipe.id)}
+          className="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg hover:shadow-xl transition-all"
+          title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+        >
+          <Heart
+            className={`w-6 h-6 transition-all ${
+              isFavorite 
+                ? 'fill-red-500 stroke-red-500' 
+                : 'stroke-gray-400 hover:stroke-red-400'
+            }`}
+          />
+        </motion.button>
+      </div>
 
       <div
         className="bg-white rounded-3xl shadow-2xl overflow-hidden"
