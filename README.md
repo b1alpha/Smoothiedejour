@@ -69,6 +69,17 @@ npm run test:ui
 
 **Pre-commit hooks:** This project uses Husky to run ESLint and tests before each commit. If linting or tests fail, the commit will be blocked. Make sure to run `npm run lint` and `npm run test:run` before committing to catch issues early.
 
+## CI/CD
+
+This project uses automated CI/CD pipelines to ensure code quality:
+
+- **GitHub Actions:** Runs linting and tests on every push and pull request to `main`, `master`, and `develop` branches. The workflow tests against Node.js 18.x and 20.x. If linting or tests fail, the PR will be blocked from merging.
+- **Vercel:** Builds and deploys the application. Since GitHub Actions already validates code quality, Vercel focuses on fast builds and deployments.
+
+You can view the CI status in:
+- GitHub: Check the "Actions" tab in your repository
+- Vercel: Check the deployment logs in your Vercel dashboard
+
 ## Contributing
 
 ### Making Changes
