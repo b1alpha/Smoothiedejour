@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus } from 'lucide-react';
 import { RecipeCard } from './components/RecipeCard';
@@ -6,7 +6,7 @@ import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
-import { fetchCommunityRecipes, submitCommunityRecipe } from './utils/supabase/community';
+import { fetchCommunityRecipes, submitCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
 
 export default function App() {
@@ -25,10 +25,10 @@ export default function App() {
     const saved = localStorage.getItem('smoothie-favorites');
     return saved ? new Set(JSON.parse(saved)) : new Set();
   });
-  const [communityRecipes, setCommunityRecipes] = useState<any[]>([]);
+  const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipe[]>([]);
 
   // Combine default, community and local user recipes (fallback)
-  const allRecipes = [...defaultRecipes, ...communityRecipes, ...userRecipes];
+  const allRecipes = useMemo(() => [...defaultRecipes, ...communityRecipes, ...userRecipes], [communityRecipes, userRecipes]);
 
   // Save user recipes to localStorage whenever they change
   useEffect(() => {
@@ -74,7 +74,7 @@ export default function App() {
     });
   };
 
-  const handleSubmitRecipe = async (recipe: any) => {
+  const handleSubmitRecipe = async (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => {
     try {
       const created = await submitCommunityRecipe(recipe);
       setCommunityRecipes((prev) => [...prev, created]);
@@ -132,7 +132,9 @@ export default function App() {
     };
 
     // Request permission for iOS 13+ devices
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (DeviceMotionEvent as any).requestPermission()
         .then((permissionState: string) => {
           if (permissionState === 'granted') {
@@ -147,6 +149,7 @@ export default function App() {
     return () => {
       window.removeEventListener('devicemotion', handleMotion);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noFat, noNuts, favoritesOnly, favorites, allRecipes]);
 
   const handleManualShake = () => {

@@ -14,8 +14,11 @@ export interface CommunityRecipe {
   createdAt?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const envProjectId = (import.meta as any).env?.VITE_SUPABASE_PROJECT_ID as string | undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const envAnon = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 const baseUrl = envUrl

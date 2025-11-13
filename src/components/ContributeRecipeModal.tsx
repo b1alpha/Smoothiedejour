@@ -6,11 +6,12 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
+import type { CommunityRecipe } from '../utils/supabase/community';
 
 interface ContributeRecipeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (recipe: any) => Promise<boolean>;
+  onSubmit: (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => Promise<boolean>;
 }
 
 const emojiOptions = ['🥤', '🥭', '🫐', '🍓', '🍌', '🍊', '🥬', '🍑', '🍉', '🥥', '🍍', '🥝'];

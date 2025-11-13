@@ -58,7 +58,7 @@ export async function shareRecipe(recipe: { id: number | string; name: string; c
       document.execCommand('copy');
       document.body.removeChild(textArea);
       return true;
-    } catch (err) {
+    } catch {
       document.body.removeChild(textArea);
       return false;
     }
