@@ -61,6 +61,7 @@ export default function App() {
       for (const localRecipe of userRecipes) {
         try {
           // Remove id and createdAt - Supabase will generate new ones
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, createdAt, ...recipeToSubmit } = localRecipe;
           const created = await submitCommunityRecipe(recipeToSubmit);
           
