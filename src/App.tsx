@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus } from 'lucide-react';
+import { Plus, ArrowLeft } from 'lucide-react';
 import { RecipeCard } from './components/RecipeCard';
 import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
+import { ContributorRecipesView } from './components/ContributorRecipesView';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
 import { fetchCommunityRecipes, submitCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
@@ -17,6 +18,7 @@ export default function App() {
   const [noNuts, setNoNuts] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
     return saved ? JSON.parse(saved) : [];
@@ -47,6 +49,48 @@ export default function App() {
         console.error('Failed to load community recipes:', err);
       });
   }, []);
+
+  // Sync local recipes to Supabase every 10 minutes
+  useEffect(() => {
+    const syncLocalRecipes = async () => {
+      if (userRecipes.length === 0) return;
+
+      // Try to submit each local recipe to Supabase
+      const recipesToRemove: (number | string)[] = [];
+      
+      for (const localRecipe of userRecipes) {
+        try {
+          // Remove id and createdAt - Supabase will generate new ones
+          const { id, createdAt, ...recipeToSubmit } = localRecipe;
+          const created = await submitCommunityRecipe(recipeToSubmit);
+          
+          // Successfully submitted - mark for removal from local and add to community
+          recipesToRemove.push(localRecipe.id);
+          setCommunityRecipes((prev) => {
+            // Check if it's already in community recipes (avoid duplicates)
+            if (prev.some(r => r.id === created.id)) {
+              return prev;
+            }
+            return [...prev, created];
+          });
+        } catch (error) {
+          // Still failed - keep it local, will retry next time
+          console.debug('Failed to sync local recipe to Supabase, will retry:', error);
+        }
+      }
+
+      // Remove successfully synced recipes from local storage
+      if (recipesToRemove.length > 0) {
+        setUserRecipes((prev) => prev.filter(r => !recipesToRemove.includes(r.id)));
+      }
+    };
+
+    // Run immediately on mount, then every 10 minutes
+    syncLocalRecipes();
+    const interval = setInterval(syncLocalRecipes, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(interval);
+  }, [userRecipes]);
 
   // Load recipe from URL parameter on mount
   useEffect(() => {
@@ -166,6 +210,26 @@ export default function App() {
 
   const filteredCount = getFilteredRecipes().length;
 
+  // Get recipes by selected contributor
+  const contributorRecipes = useMemo(() => {
+    if (!selectedContributor) return [];
+    return allRecipes.filter(r => r.contributor === selectedContributor);
+  }, [selectedContributor, allRecipes]);
+
+  const handleContributorClick = (contributor: string) => {
+    setSelectedContributor(contributor);
+    setCurrentRecipe(null);
+  };
+
+  const handleBackToMain = () => {
+    setSelectedContributor(null);
+    setCurrentRecipe(null);
+  };
+
+  const handleSelectRecipe = (recipe: Recipe | CommunityRecipe) => {
+    setCurrentRecipe(recipe);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-yellow-100">
       <div className="max-w-md mx-auto min-h-screen flex flex-col">
@@ -177,17 +241,34 @@ export default function App() {
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="w-10"></div>
+              {selectedContributor ? (
+                <motion.button
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleBackToMain}
+                  className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                  title="Back to all recipes"
+                >
+                  <ArrowLeft className="w-5 h-5 text-purple-600" />
+                </motion.button>
+              ) : (
+                <div className="w-10"></div>
+              )}
               <h1 className="text-4xl">🥤</h1>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => setIsModalOpen(true)}
-                className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                title="Contribute a recipe"
-              >
-                <Plus className="w-5 h-5 text-purple-600" />
-              </motion.button>
+              {!selectedContributor && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setIsModalOpen(true)}
+                  className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                  title="Contribute a recipe"
+                >
+                  <Plus className="w-5 h-5 text-purple-600" />
+                </motion.button>
+              )}
+              {selectedContributor && <div className="w-10"></div>}
             </div>
             <h2 className="text-purple-600">Smoothie de Jour</h2>
             <p className="text-sm text-gray-600 mt-1">
@@ -211,7 +292,15 @@ export default function App() {
         {/* Main Content */}
         <main className="flex-1 flex items-center justify-center p-6">
           <AnimatePresence mode="wait">
-            {!currentRecipe && !isShaking && (
+            {selectedContributor && !currentRecipe && (
+              <ContributorRecipesView
+                key="contributor-view"
+                contributor={selectedContributor}
+                recipes={contributorRecipes}
+                onSelectRecipe={handleSelectRecipe}
+              />
+            )}
+            {!selectedContributor && !currentRecipe && !isShaking && (
               <ShakeInstruction 
                 key="instruction" 
                 onManualShake={handleManualShake} 
@@ -254,30 +343,33 @@ export default function App() {
                 recipe={currentRecipe}
                 isFavorite={favorites.has(currentRecipe.id)}
                 onToggleFavorite={toggleFavorite}
+                onContributorClick={handleContributorClick}
               />
             )}
           </AnimatePresence>
         </main>
 
         {/* Footer */}
-        <footer className="p-6 text-center">
-          {shakeCount > 0 && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm text-gray-600 mb-4"
+        {!selectedContributor && (
+          <footer className="p-6 text-center">
+            {shakeCount > 0 && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-sm text-gray-600 mb-4"
+              >
+                {shakeCount} {shakeCount === 1 ? 'recipe' : 'recipes'} discovered 🎉
+              </motion.p>
+            )}
+            <button
+              onClick={handleManualShake}
+              disabled={filteredCount === 0}
+              className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {shakeCount} {shakeCount === 1 ? 'recipe' : 'recipes'} discovered 🎉
-            </motion.p>
-          )}
-          <button
-            onClick={handleManualShake}
-            disabled={filteredCount === 0}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Get Another Recipe
-          </button>
-        </footer>
+              Get Another Recipe
+            </button>
+          </footer>
+        )}
       </div>
 
       {/* Contribution Modal */}
