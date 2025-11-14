@@ -10,6 +10,7 @@ import { smoothieRecipes } from './data/recipes';
 vi.mock('./utils/supabase/community', () => ({
   fetchCommunityRecipes: vi.fn(),
   submitCommunityRecipe: vi.fn(),
+  updateCommunityRecipe: vi.fn(),
 }));
 
 // Mock Supabase client
@@ -371,6 +372,120 @@ describe('App', () => {
       expect(screen.getByText(/Recipes by Test Contributor/i)).toBeInTheDocument();
       expect(screen.getByTitle(/Share this contributor's recipes/i)).toBeInTheDocument();
     });
+  });
+
+  it('should handle recipe update', async () => {
+    const user = userEvent.setup();
+    const mockExistingRecipe = {
+      id: 'recipe:1762405222159:19kx5',
+      name: 'Original Recipe',
+      contributor: 'test@example.com',
+      emoji: '🥤',
+      color: '#9333EA',
+      ingredients: ['1 banana'],
+      instructions: 'Blend',
+      servings: 1,
+      prepTime: '5 min',
+      containsFat: false,
+      containsNuts: false,
+      createdAt: '2024-01-01',
+    };
+
+    const mockUpdatedRecipe = {
+      ...mockExistingRecipe,
+      name: 'Updated Recipe',
+      ingredients: ['2 bananas', '1 cup milk'],
+      instructions: 'Blend well',
+    };
+
+    // Mock authenticated session first
+    const { supabase } = await import('./utils/supabase/client');
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: {
+        session: {
+          user: { id: 'test-user', email: 'test@example.com', user_metadata: {} },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      },
+      error: null,
+    });
+
+    // Mock fetchCommunityRecipes to return the recipe
+    vi.mocked(communityUtils.fetchCommunityRecipes).mockResolvedValue([mockExistingRecipe]);
+    vi.mocked(communityUtils.updateCommunityRecipe).mockResolvedValue(mockUpdatedRecipe);
+
+    renderApp();
+
+    // Wait for recipes to load and auth to initialize
+    await waitFor(() => {
+      expect(screen.getByTitle('Contribute a recipe')).toBeInTheDocument();
+    });
+
+    // Wait for the recipe list to be available
+    await waitFor(() => {
+      expect(communityUtils.fetchCommunityRecipes).toHaveBeenCalled();
+    });
+
+    // Shake to get a recipe - the mock recipe should appear
+    const shakeButton = await screen.findByRole('button', { name: /get another recipe|shake/i });
+    await user.click(shakeButton);
+
+    // Wait for recipe to appear - it should show the mock recipe
+    await waitFor(() => {
+      expect(screen.getByText('Original Recipe')).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Click edit button (should be visible for user's own recipe)
+    const editButton = await screen.findByTitle('Edit recipe');
+    await user.click(editButton);
+
+    // Wait for edit modal
+    await waitFor(() => {
+      expect(screen.getByText('Edit Recipe')).toBeInTheDocument();
+    });
+
+    // Update the recipe name
+    const nameInput = screen.getByLabelText(/recipe name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Updated Recipe');
+
+    // Update ingredients
+    const ingredientInputs = await screen.findAllByPlaceholderText(/e.g., 1 cup frozen mango/i);
+    await user.clear(ingredientInputs[0]);
+    await user.type(ingredientInputs[0], '2 bananas');
+    
+    // Add another ingredient - button text is just "Add"
+    const addIngredientButton = screen.getByRole('button', { name: /^add$/i });
+    await user.click(addIngredientButton);
+    const newIngredientInputs = await screen.findAllByPlaceholderText(/e.g., 1 cup frozen mango/i);
+    await user.type(newIngredientInputs[newIngredientInputs.length - 1], '1 cup milk');
+
+    // Update instructions
+    const instructionsInput = screen.getByLabelText(/instructions/i);
+    await user.clear(instructionsInput);
+    await user.type(instructionsInput, 'Blend well');
+
+    // Submit update
+    const updateButton = screen.getByRole('button', { name: /update recipe/i });
+    await user.click(updateButton);
+
+    // Verify update was called
+    await waitFor(() => {
+      expect(communityUtils.updateCommunityRecipe).toHaveBeenCalledWith(
+        'recipe:1762405222159:19kx5',
+        expect.objectContaining({
+          name: 'Updated Recipe',
+          contributor: 'test@example.com',
+          ingredients: expect.arrayContaining(['2 bananas', '1 cup milk']),
+          instructions: 'Blend well',
+        })
+      );
+    }, { timeout: 3000 });
+
+    // Verify success message
+    await waitFor(() => {
+      expect(screen.getByText('Your recipe has been updated')).toBeInTheDocument();
+    }, { timeout: 3000 });
   });
 
   it('should disable "Get Another Recipe" button when no recipes match filters', async () => {

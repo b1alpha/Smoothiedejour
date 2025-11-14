@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Share2 } from 'lucide-react';
+import { Heart, Share2, Edit } from 'lucide-react';
 import { useState } from 'react';
 import { shareRecipe } from '../utils/share';
 
@@ -20,9 +20,11 @@ interface RecipeCardProps {
   isFavorite: boolean;
   onToggleFavorite: (id: number | string) => void;
   onContributorClick?: (contributor: string) => void;
+  onEdit?: (recipe: Recipe) => void;
+  canEdit?: boolean;
 }
 
-export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributorClick }: RecipeCardProps) {
+export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributorClick, onEdit, canEdit }: RecipeCardProps) {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -67,7 +69,21 @@ export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributor
         )}
       </AnimatePresence>
 
-      {/* Action Buttons */}
+      {/* Edit Button - Left Side */}
+      {canEdit && onEdit && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onEdit(recipe)}
+          style={{ position: 'absolute', top: '1rem', left: '16px', zIndex: 10 }}
+          className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg hover:shadow-xl transition-all"
+          title="Edit recipe"
+        >
+          <Edit className="w-6 h-6 stroke-gray-600 hover:stroke-purple-600 transition-colors" />
+        </motion.button>
+      )}
+
+      {/* Action Buttons - Right Side */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">
         <motion.button
           whileHover={{ scale: 1.1 }}

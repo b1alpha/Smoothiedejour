@@ -21,6 +21,8 @@ const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL as string | undefined
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const envAnon = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+// Support local development: if VITE_SUPABASE_URL points to localhost, use it directly
+// Otherwise, construct the URL from project ID or use the provided URL
 const baseUrl = envUrl
   ? `${envUrl}/functions/v1/recipes`
   : `https://${envProjectId}.supabase.co/functions/v1/recipes`;
@@ -52,6 +54,26 @@ export async function submitCommunityRecipe(recipe: Omit<CommunityRecipe, 'id' |
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Failed to submit recipe: ${res.status} ${text}`);
+  }
+  const json = await res.json();
+  return json.recipe;
+}
+
+export async function updateCommunityRecipe(
+  recipeId: string,
+  recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>
+): Promise<CommunityRecipe> {
+  const encodedRecipeId = encodeURIComponent(recipeId);
+  // Route is /:id, so append the encoded ID directly to baseUrl
+  // URL: /functions/v1/recipes/{encodedRecipeId} matches route /:id
+  const res = await fetch(`${baseUrl}/${encodedRecipeId}`, {
+    method: 'PUT',
+    headers: defaultHeaders,
+    body: JSON.stringify(recipe),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to update recipe: ${res.status} ${text}`);
   }
   const json = await res.json();
   return json.recipe;
