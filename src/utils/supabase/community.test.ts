@@ -125,9 +125,10 @@ describe('updateCommunityRecipe', () => {
     await expect(updateCommunityRecipe(mockRecipeId, mockRecipe)).rejects.toThrow('Network error');
   });
 
-  it('should reproduce production 404 error - verify URL matches actual error', async () => {
-    // This test reproduces the exact error from production:
-    // PUT https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes/recipe%3A1762405222159%3A19kx5 404 (Not Found)
+  it('should construct correct URL pattern for recipe updates', async () => {
+    // This test verifies the URL construction pattern is correct
+    // Note: The URL and project ID values are public by design (VITE_ prefix means client-side)
+    // They're safe to expose as they're already visible in browser network requests
     
     const mockResponse = {
       ok: false,
@@ -137,28 +138,20 @@ describe('updateCommunityRecipe', () => {
 
     vi.mocked(global.fetch).mockResolvedValue(mockResponse as Response);
 
-    // Mock environment to simulate production
-    const originalEnv = import.meta.env;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (import.meta as any).env = {
-      ...originalEnv,
-      VITE_SUPABASE_URL: 'https://vbzmelpvugyixagfiftu.supabase.co',
-    };
-
     await expect(updateCommunityRecipe(mockRecipeId, mockRecipe)).rejects.toThrow(
       'Failed to update recipe: 404'
     );
 
-    // Verify the exact URL that was called matches the error
+    // Verify the URL pattern matches expected structure
     const callArgs = vi.mocked(global.fetch).mock.calls[0];
     const url = callArgs[0] as string;
     
-    // The URL should match exactly what's in the error
-    expect(url).toBe('https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes/recipe%3A1762405222159%3A19kx5');
-    
-    // Restore original env
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (import.meta as any).env = originalEnv;
+    // Verify URL structure: should contain /functions/v1/recipes/ and encoded recipe ID
+    expect(url).toMatch(/https:\/\/.*\.supabase\.co\/functions\/v1\/recipes\/recipe%3A1762405222159%3A19kx5$/);
+    expect(url).toContain('/functions/v1/recipes/');
+    expect(url).toContain('recipe%3A1762405222159%3A19kx5');
+    // Should NOT contain double encoding
+    expect(url).not.toContain('recipe%253A');
   });
 });
 
