@@ -391,7 +391,7 @@ export default function App() {
               )}
               <h1 className="text-4xl">🥤</h1>
               {!selectedContributor && !showUserProfile ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" style={{ transform: 'translateX(-7px)' }}>
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
