@@ -11,6 +11,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, nickname: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   updateNickname: (nickname: string) => Promise<{ error: Error | null }>;
+  changePassword: (newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,24 +53,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      return { error };
+    } catch (err) {
+      // Handle connection refused errors gracefully
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        const isLocalhost = supabaseUrl.includes('localhost');
+        if (isLocalhost && import.meta.env.DEV) {
+          console.warn('⚠️ Local Supabase instance not running. Cannot sign in.');
+          console.warn('💡 Start Supabase with: supabase start');
+          return { error: new Error('Local Supabase instance is not running. Please start it with "supabase start"') };
+        }
+      }
+      return { error: err instanceof Error ? err : new Error('Failed to sign in') };
+    }
   };
 
   const signUp = async (email: string, password: string, nickname: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          nickname: nickname.trim(),
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            nickname: nickname.trim(),
+          },
         },
-      },
-    });
-    return { error };
+      });
+      return { error };
+    } catch (err) {
+      // Handle connection refused errors gracefully
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        const isLocalhost = supabaseUrl.includes('localhost');
+        if (isLocalhost && import.meta.env.DEV) {
+          console.warn('⚠️ Local Supabase instance not running. Cannot sign up.');
+          console.warn('💡 Start Supabase with: supabase start');
+          return { error: new Error('Local Supabase instance is not running. Please start it with "supabase start"') };
+        }
+      }
+      return { error: err instanceof Error ? err : new Error('Failed to sign up') };
+    }
   };
 
   const updateNickname = async (newNickname: string) => {
@@ -94,13 +121,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const changePassword = async (newPassword: string) => {
+    if (!user) return { error: new Error('Not authenticated') };
+    
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    
+    return { error };
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
     setNickname(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, nickname, signIn, signUp, signOut, updateNickname }}>
+    <AuthContext.Provider value={{ user, session, loading, nickname, signIn, signUp, signOut, updateNickname, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,6 +8,7 @@ import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { ContributorRecipesView } from './components/ContributorRecipesView';
 import { AuthModal } from './components/AuthModal';
 import { NicknameEditModal } from './components/NicknameEditModal';
+import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserProfileView } from './components/UserProfileView';
 import { useAuth } from './contexts/AuthContext';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
@@ -25,6 +26,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
+  const [isPasswordChangeModalOpen, setIsPasswordChangeModalOpen] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<CommunityRecipe | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
@@ -70,7 +72,11 @@ export default function App() {
         setIsLoadingRecipes(false);
       })
       .catch((err) => {
-        console.error('Failed to load community recipes:', err);
+        // Only log error details if it's not a connection refused (expected when localhost not running)
+        const isConnectionRefused = err instanceof TypeError && err.message === 'Failed to fetch';
+        if (!isConnectionRefused) {
+          console.error('Failed to load community recipes:', err);
+        }
         // Mark as failed so we show defaults as fallback
         setCommunityRecipesLoadFailed(true);
         setIsLoadingRecipes(false);
@@ -445,6 +451,7 @@ export default function App() {
               <UserProfileView
                 key="user-profile"
                 onEditNickname={() => setIsNicknameModalOpen(true)}
+                onChangePassword={() => setIsPasswordChangeModalOpen(true)}
                 onSignOut={async () => {
                   await signOut();
                   setShowUserProfile(false);
@@ -555,6 +562,10 @@ export default function App() {
       <NicknameEditModal
         isOpen={isNicknameModalOpen}
         onClose={() => setIsNicknameModalOpen(false)}
+      />
+      <PasswordChangeModal
+        isOpen={isPasswordChangeModalOpen}
+        onClose={() => setIsPasswordChangeModalOpen(false)}
       />
       <ContributeRecipeModal
         isOpen={isModalOpen}

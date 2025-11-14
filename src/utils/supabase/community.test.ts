@@ -124,5 +124,41 @@ describe('updateCommunityRecipe', () => {
 
     await expect(updateCommunityRecipe(mockRecipeId, mockRecipe)).rejects.toThrow('Network error');
   });
+
+  it('should reproduce production 404 error - verify URL matches actual error', async () => {
+    // This test reproduces the exact error from production:
+    // PUT https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes/recipe%3A1762405222159%3A19kx5 404 (Not Found)
+    
+    const mockResponse = {
+      ok: false,
+      status: 404,
+      text: async () => '404 Not Found',
+    };
+
+    vi.mocked(global.fetch).mockResolvedValue(mockResponse as Response);
+
+    // Mock environment to simulate production
+    const originalEnv = import.meta.env;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (import.meta as any).env = {
+      ...originalEnv,
+      VITE_SUPABASE_URL: 'https://vbzmelpvugyixagfiftu.supabase.co',
+    };
+
+    await expect(updateCommunityRecipe(mockRecipeId, mockRecipe)).rejects.toThrow(
+      'Failed to update recipe: 404'
+    );
+
+    // Verify the exact URL that was called matches the error
+    const callArgs = vi.mocked(global.fetch).mock.calls[0];
+    const url = callArgs[0] as string;
+    
+    // The URL should match exactly what's in the error
+    expect(url).toBe('https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes/recipe%3A1762405222159%3A19kx5');
+    
+    // Restore original env
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (import.meta as any).env = originalEnv;
+  });
 });
 

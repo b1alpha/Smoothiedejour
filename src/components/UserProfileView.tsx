@@ -1,15 +1,16 @@
 import { motion } from 'motion/react';
-import { User, LogOut, Edit, Mail, BookOpen } from 'lucide-react';
+import { User, LogOut, Edit, Mail, BookOpen, Lock } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface UserProfileViewProps {
   onEditNickname: () => void;
+  onChangePassword: () => void;
   onSignOut: () => void;
   onViewMyRecipes: () => void;
   recipeCount?: number;
 }
 
-export function UserProfileView({ onEditNickname, onSignOut, onViewMyRecipes, recipeCount = 0 }: UserProfileViewProps) {
+export function UserProfileView({ onEditNickname, onChangePassword, onSignOut, onViewMyRecipes, recipeCount = 0 }: UserProfileViewProps) {
   const { user, nickname } = useAuth();
 
   if (!user) return null;
@@ -98,6 +99,15 @@ export function UserProfileView({ onEditNickname, onSignOut, onViewMyRecipes, re
           >
             <BookOpen className="w-5 h-5" />
             My Recipes ({recipeCount})
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onChangePassword}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl shadow-lg hover:shadow-xl transition-all"
+          >
+            <Lock className="w-5 h-5" />
+            Change Password
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}

@@ -10,6 +10,7 @@ const supabaseAnonKey = envAnon || 'test-anon-key';
 
 // Debug logging (only in development)
 if (import.meta.env.DEV) {
+  const isLocalhost = envUrl?.includes('localhost');
   console.log('Supabase Config:', {
     hasUrl: !!envUrl,
     hasAnonKey: !!envAnon,
@@ -17,7 +18,14 @@ if (import.meta.env.DEV) {
     url: envUrl || (envProjectId ? `https://${envProjectId}.supabase.co` : 'not set'),
     anonKeyLength: envAnon?.length || 0,
     anonKeyPreview: envAnon ? `${envAnon.substring(0, 20)}...` : 'not set',
+    isLocalhost,
   });
+  
+  if (isLocalhost) {
+    console.info('ℹ️ Using local Supabase instance. Make sure it\'s running:');
+    console.info('   - Start Supabase: supabase start');
+    console.info('   - Start Edge Functions: supabase functions serve recipes');
+  }
 }
 
 if (!envUrl && !envProjectId && !envAnon) {

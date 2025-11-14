@@ -11,11 +11,11 @@ app.use('*', logger(console.log));
 // Health check
 app.get('/recipes/health', (c) => c.json({ ok: true }));
 
-// Update an existing recipe at /:id
-// GET/POST use fetch(baseUrl) where baseUrl = '/functions/v1/recipes' and match '/recipes'
-// PUT uses fetch(`${baseUrl}/${id}`) = '/functions/v1/recipes/{id}'
-// Supabase strips the function name, so '/functions/v1/recipes/{id}' becomes '/{id}' and matches '/:id'
-app.put('/:id', async (c) => {
+// Update an existing recipe at /recipes/:id (MUST come before /recipes to match correctly)
+// Frontend calls: PUT /functions/v1/recipes/{id}
+// Supabase strips '/functions/v1' but keeps '/recipes', so function receives '/recipes/{id}'
+// This matches '/recipes/:id' pattern, consistent with GET/POST using '/recipes'
+app.put('/recipes/:id', async (c) => {
   try {
     const recipeId = decodeURIComponent(c.req.param('id'));
     const recipe = await c.req.json();

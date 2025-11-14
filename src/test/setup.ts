@@ -80,6 +80,10 @@ vi.mock('../utils/supabase/client', async () => {
         })),
         signInWithPassword: vi.fn(),
         signUp: vi.fn(),
+        updateUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} } },
+          error: null,
+        }),
         signOut: vi.fn(),
       },
     },

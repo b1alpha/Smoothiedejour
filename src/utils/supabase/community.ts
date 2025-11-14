@@ -34,15 +34,30 @@ const defaultHeaders: Record<string, string> = {
 };
 
 export async function fetchCommunityRecipes(): Promise<CommunityRecipe[]> {
-  const res = await fetch(baseUrl, {
-    method: 'GET',
-    headers: defaultHeaders,
-  });
-  if (!res.ok) {
-    throw new Error(`Failed to fetch recipes: ${res.status}`);
+  try {
+    const res = await fetch(baseUrl, {
+      method: 'GET',
+      headers: defaultHeaders,
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch recipes: ${res.status}`);
+    }
+    const json = await res.json();
+    return json.recipes ?? [];
+  } catch (error) {
+    // Check if it's a connection refused error (localhost not running)
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      const isLocalhost = baseUrl.includes('localhost');
+      if (isLocalhost && import.meta.env.DEV) {
+        console.warn('⚠️ Local Supabase instance not running. Connection refused to:', baseUrl);
+        console.warn('💡 To start local Supabase:');
+        console.warn('   1. Start Supabase: supabase start');
+        console.warn('   2. Start Edge Functions: supabase functions serve recipes');
+        console.warn('   Or use production by removing .env.local');
+      }
+    }
+    throw error;
   }
-  const json = await res.json();
-  return json.recipes ?? [];
 }
 
 export async function submitCommunityRecipe(recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>): Promise<CommunityRecipe> {
@@ -64,8 +79,11 @@ export async function updateCommunityRecipe(
   recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>
 ): Promise<CommunityRecipe> {
   const encodedRecipeId = encodeURIComponent(recipeId);
-  // Route is /:id, so append the encoded ID directly to baseUrl
-  // URL: /functions/v1/recipes/{encodedRecipeId} matches route /:id
+  // Route is /recipes/:id
+  // Frontend: PUT /functions/v1/recipes/{id}
+  // Supabase strips '/functions/v1' but keeps '/recipes', so function receives '/recipes/{id}'
+  // baseUrl = /functions/v1/recipes, so we call: /functions/v1/recipes/{id}
+  // This matches the backend route '/recipes/:id'
   const res = await fetch(`${baseUrl}/${encodedRecipeId}`, {
     method: 'PUT',
     headers: defaultHeaders,
