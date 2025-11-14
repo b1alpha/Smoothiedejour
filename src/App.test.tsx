@@ -312,6 +312,78 @@ describe('App', () => {
     }, { timeout: 3000 });
   });
 
+  it('should allow unauthenticated users to contribute recipes', async () => {
+    const user = userEvent.setup();
+    const mockSubmittedRecipe = {
+      id: 'new-recipe-1',
+      name: 'Guest Recipe',
+      contributor: 'Guest User',
+      emoji: '🥤',
+      color: '#9333EA',
+      ingredients: ['1 banana'],
+      instructions: 'Blend',
+      servings: 1,
+      prepTime: '5 min',
+      containsFat: false,
+      containsNuts: false,
+    };
+
+    vi.mocked(communityUtils.submitCommunityRecipe).mockResolvedValue(mockSubmittedRecipe);
+
+    // Ensure no authenticated session
+    const { supabase } = await import('./utils/supabase/client');
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    renderApp();
+
+    // Wait for plus button to appear (should be visible even without auth)
+    await waitFor(() => {
+      expect(screen.getByTitle('Contribute a recipe')).toBeInTheDocument();
+    });
+
+    // Open modal
+    const contributeButton = screen.getByTitle('Contribute a recipe');
+    await user.click(contributeButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Contribute a Recipe')).toBeInTheDocument();
+    });
+
+    // Fill form
+    await waitFor(() => {
+      expect(screen.getByLabelText(/recipe name/i)).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByLabelText(/recipe name/i), 'Guest Recipe');
+    
+    // Contributor field should be enabled for unauthenticated users
+    const contributorInput = screen.getByLabelText(/your name/i);
+    expect(contributorInput).not.toBeDisabled();
+    await user.type(contributorInput, 'Guest User');
+    
+    const ingredientInputs = await screen.findAllByPlaceholderText(/e.g., 1 cup frozen mango/i);
+    await user.clear(ingredientInputs[0]);
+    await user.type(ingredientInputs[0], '1 banana');
+    
+    await user.type(screen.getByLabelText(/instructions/i), 'Blend');
+
+    // Submit
+    const submitButton = screen.getByRole('button', { name: /submit/i });
+    await user.click(submitButton);
+
+    await waitFor(() => {
+      expect(communityUtils.submitCommunityRecipe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Guest Recipe',
+          contributor: 'Guest User',
+        })
+      );
+    }, { timeout: 3000 });
+  });
+
   it('should persist favorites to localStorage', async () => {
     const user = userEvent.setup();
     renderApp();

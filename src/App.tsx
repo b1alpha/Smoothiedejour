@@ -209,12 +209,8 @@ export default function App() {
   };
 
   const handleContributeClick = () => {
-    if (!user) {
-      setIsAuthModalOpen(true);
-    } else {
-      setEditingRecipe(null);
-      setIsModalOpen(true);
-    }
+    setEditingRecipe(null);
+    setIsModalOpen(true);
   };
 
   const handleEditRecipe = (recipe: Recipe | CommunityRecipe) => {
@@ -388,31 +384,25 @@ export default function App() {
               <h1 className="text-4xl">🥤</h1>
               {!selectedContributor && !showUserProfile ? (
                 <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleContributeClick}
+                    className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                    title="Contribute a recipe"
+                  >
+                    <Plus className="w-5 h-5 text-purple-600" />
+                  </motion.button>
                   {user ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="flex items-center gap-2"
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setShowUserProfile(true)}
+                      className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                      title="User profile"
                     >
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={handleContributeClick}
-                        className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                        title="Contribute a recipe"
-                      >
-                        <Plus className="w-5 h-5 text-purple-600" />
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setShowUserProfile(true)}
-                        className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                        title="User profile"
-                      >
-                        <User className="w-5 h-5 text-purple-600" />
-                      </motion.button>
-                    </motion.div>
+                      <User className="w-5 h-5 text-purple-600" />
+                    </motion.button>
                   ) : (
                     <motion.button
                       whileHover={{ scale: 1.1 }}
