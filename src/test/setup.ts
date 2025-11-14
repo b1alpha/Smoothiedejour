@@ -64,3 +64,37 @@ Object.defineProperty(navigator, 'clipboard', {
   },
 });
 
+// Mock Supabase auth
+vi.mock('../utils/supabase/client', async () => {
+  const actual = await vi.importActual('../utils/supabase/client');
+  return {
+    ...actual,
+    supabase: {
+      auth: {
+        // Resolve asynchronously using setTimeout to allow React to properly batch state updates
+        // This ensures state updates happen within React's expected lifecycle
+        getSession: vi.fn(() => 
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                data: { session: null },
+                error: null,
+              });
+            }, 0);
+          })
+        ),
+        onAuthStateChange: vi.fn(() => ({
+          data: { subscription: { unsubscribe: vi.fn() } },
+        })),
+        signInWithPassword: vi.fn(),
+        signUp: vi.fn(),
+        updateUser: vi.fn(() => Promise.resolve({
+          data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} } },
+          error: null,
+        })),
+        signOut: vi.fn(),
+      },
+    },
+  };
+});
+

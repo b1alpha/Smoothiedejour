@@ -22,6 +22,36 @@ A community-driven smoothie recipe app built with React, Vite, and TypeScript.
    npm install
    ```
 
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory with your Supabase credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Then edit `.env` and add your Supabase project credentials:
+   - Get your Supabase URL and anon key from your [Supabase Dashboard](https://supabase.com/dashboard)
+   - Go to your project → Settings → API
+   - Copy the "Project URL" and "anon public" key
+   
+   ```env
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+   
+   **Note:** The `.env` file is gitignored and won't be committed to the repository.
+
+   **Using `.env.local`:** You can also use `.env.local` instead of `.env`. Vite automatically loads `.env.local` and it takes precedence over `.env`. This is useful for local-only overrides.
+
+   **For Local Testing:** If you want to test Edge Functions locally, create a `.env.local` file (or update your `.env`):
+   ```env
+   VITE_SUPABASE_URL=http://localhost:54321
+   VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+   ```
+   Then run `supabase functions serve recipes` in a separate terminal to start the local edge function server.
+   
+   **Note:** After changing environment variables, restart your dev server (`npm run dev`) for the changes to take effect.
+
 ### Running the Development Server
 
 Start the development server:

@@ -61,6 +61,7 @@
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "@vitest/coverage-v8": "^4.0.8",
     "@vitest/ui": "^4.0.8",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.5",
@@ -80,6 +81,7 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "prepare": "husky"
   }
 }

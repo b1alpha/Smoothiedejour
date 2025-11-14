@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -6,19 +6,25 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
+import { useAuth } from '../contexts/AuthContext';
 import type { CommunityRecipe } from '../utils/supabase/community';
 
 interface ContributeRecipeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => Promise<boolean>;
+  editingRecipe?: CommunityRecipe | null;
+  onUpdate?: (recipeId: string, recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => Promise<boolean>;
 }
 
 const emojiOptions = ['🥤', '🥭', '🫐', '🍓', '🍌', '🍊', '🥬', '🍑', '🍉', '🥥', '🍍', '🥝'];
 const colorOptions = ['#FF6B6B', '#FFA500', '#FFD700', '#32CD32', '#9333EA', '#FF1493', '#4B0082', '#FF6347'];
 
-export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeRecipeModalProps) {
+export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe, onUpdate }: ContributeRecipeModalProps) {
+  const { user, nickname } = useAuth();
+  const isEditing = !!editingRecipe;
   const [name, setName] = useState('');
+  // Use user email as initial value, will be updated when modal opens if user changes
   const [contributor, setContributor] = useState('');
   const [emoji, setEmoji] = useState('🥤');
   const [color, setColor] = useState('#9333EA');
@@ -30,6 +36,54 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
   const [containsNuts, setContainsNuts] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Reset form when modal opens/closes or editing recipe changes
+  // Note: This is a valid use case for syncing external state (user) to form state
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (isOpen) {
+      if (editingRecipe) {
+        // Populate form with editing recipe data
+        setName(editingRecipe.name);
+        setContributor(editingRecipe.contributor);
+        setEmoji(editingRecipe.emoji);
+        setColor(editingRecipe.color);
+        setIngredients(editingRecipe.ingredients.length > 0 ? editingRecipe.ingredients : ['']);
+        setInstructions(editingRecipe.instructions);
+        setServings(String(editingRecipe.servings));
+        setPrepTime(editingRecipe.prepTime);
+        setContainsFat(editingRecipe.containsFat);
+        setContainsNuts(editingRecipe.containsNuts);
+      } else {
+        // Set contributor from user nickname or email when creating new recipe
+        setContributor(nickname || user?.email || '');
+        setName('');
+        setEmoji('🥤');
+        setColor('#9333EA');
+        setIngredients(['']);
+        setInstructions('');
+        setServings('1');
+        setPrepTime('5 min');
+        setContainsFat(false);
+        setContainsNuts(false);
+      }
+      setShowSuccess(false);
+    } else {
+      // Reset form when modal closes
+      setName('');
+      setContributor('');
+      setEmoji('🥤');
+      setColor('#9333EA');
+      setIngredients(['']);
+      setInstructions('');
+      setServings('1');
+      setPrepTime('5 min');
+      setContainsFat(false);
+      setContainsNuts(false);
+      setShowSuccess(false);
+    }
+  }, [isOpen, user?.email, nickname, editingRecipe]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -69,7 +123,12 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
       containsNuts,
     };
 
-    const success = await onSubmit(recipe);
+    let success = false;
+    if (isEditing && editingRecipe && onUpdate) {
+      success = await onUpdate(editingRecipe.id, recipe);
+    } else {
+      success = await onSubmit(recipe);
+    }
     
     if (success) {
       setShowSuccess(true);
@@ -121,8 +180,10 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
             {/* Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50">
               <div>
-                <h2 className="text-gray-800">Contribute a Recipe</h2>
-                <p className="text-sm text-gray-600 mt-1">Share your favorite smoothie with the community</p>
+                <h2 className="text-gray-800">{isEditing ? 'Edit Recipe' : 'Contribute a Recipe'}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {isEditing ? 'Update your smoothie recipe' : 'Share your favorite smoothie with the community'}
+                </p>
               </div>
               <button
                 onClick={onClose}
@@ -149,15 +210,23 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
                 </div>
 
                 <div>
-                  <Label htmlFor="contributor">Your Name *</Label>
+                  <Label htmlFor="contributor">
+                    {user ? 'Your Nickname' : 'Your Name *'}
+                  </Label>
                   <Input
                     id="contributor"
                     value={contributor}
                     onChange={(e) => setContributor(e.target.value)}
-                    placeholder="e.g., Sarah M."
+                    placeholder={user ? (nickname || user.email) : 'e.g., Sarah M.'}
                     required
+                    disabled={!!user}
                     className="mt-1"
                   />
+                  {user && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {nickname ? 'This will appear on your recipes' : 'Set a nickname in your profile to hide your email'}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -313,7 +382,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white px-8 py-6 rounded-2xl shadow-2xl text-center">
                     <div className="text-5xl mb-3">✓</div>
                     <h3 className="text-white mb-1">Success!</h3>
-                    <p className="text-sm text-white/90">Your recipe has been added</p>
+                    <p className="text-sm text-white/90">{isEditing ? 'Your recipe has been updated' : 'Your recipe has been added'}</p>
                   </div>
                 </motion.div>
               )}
@@ -335,7 +404,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 'Submitting...' : 'Submit Recipe'}
+                {isSubmitting ? (isEditing ? 'Updating...' : 'Submitting...') : (isEditing ? 'Update Recipe' : 'Submit Recipe')}
               </Button>
             </div>
           </motion.div>

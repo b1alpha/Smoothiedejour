@@ -1,16 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft, User } from 'lucide-react';
 import { RecipeCard } from './components/RecipeCard';
 import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { ContributorRecipesView } from './components/ContributorRecipesView';
+import { AuthModal } from './components/AuthModal';
+import { NicknameEditModal } from './components/NicknameEditModal';
+import { PasswordChangeModal } from './components/PasswordChangeModal';
+import { UserProfileView } from './components/UserProfileView';
+import { useAuth } from './contexts/AuthContext';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
-import { fetchCommunityRecipes, submitCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
+import { fetchCommunityRecipes, submitCommunityRecipe, updateCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
 
 export default function App() {
+  const { user, signOut, nickname } = useAuth();
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [shakeCount, setShakeCount] = useState(0);
@@ -18,7 +24,12 @@ export default function App() {
   const [noNuts, setNoNuts] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
+  const [isPasswordChangeModalOpen, setIsPasswordChangeModalOpen] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<CommunityRecipe | null>(null);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
     return saved ? JSON.parse(saved) : [];
@@ -61,7 +72,13 @@ export default function App() {
         setIsLoadingRecipes(false);
       })
       .catch((err) => {
-        console.error('Failed to load community recipes:', err);
+        // Only log error details if it's not a connection refused (expected when localhost not running)
+        // and not in test environment (tests intentionally trigger this error)
+        const isConnectionRefused = err instanceof TypeError && err.message === 'Failed to fetch';
+        const isTestEnv = import.meta.env.MODE === 'test' || typeof vi !== 'undefined';
+        if (!isConnectionRefused && !isTestEnv) {
+          console.error('Failed to load community recipes:', err);
+        }
         // Mark as failed so we show defaults as fallback
         setCommunityRecipesLoadFailed(true);
         setIsLoadingRecipes(false);
@@ -111,16 +128,29 @@ export default function App() {
     return () => clearInterval(interval);
   }, [userRecipes]);
 
-  // Load recipe from URL parameter on mount
+  // Load recipe or contributor from URL parameter on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const recipeId = params.get('recipe');
+    const contributorParam = params.get('contributor');
+    
     if (recipeId && allRecipes.length > 0) {
       // URLSearchParams.get() automatically decodes the value
       const decodedRecipeId = decodeURIComponent(recipeId);
       const recipe = allRecipes.find(r => String(r.id) === decodedRecipeId);
       if (recipe) {
         setCurrentRecipe(recipe);
+        // Clean up URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } else if (contributorParam && allRecipes.length > 0) {
+      // URLSearchParams.get() automatically decodes the value
+      const decodedContributor = decodeURIComponent(contributorParam);
+      // Check if this contributor has any recipes
+      const hasRecipes = allRecipes.some(r => r.contributor === decodedContributor);
+      if (hasRecipes) {
+        setSelectedContributor(decodedContributor);
+        setCurrentRecipe(null);
         // Clean up URL without reloading
         window.history.replaceState({}, '', window.location.pathname);
       }
@@ -140,18 +170,75 @@ export default function App() {
   };
 
   const handleSubmitRecipe = async (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => {
+    // Use authenticated user's nickname if available, otherwise fall back to email or provided contributor
+    const contributorName = nickname || user?.email || recipe.contributor;
+    const recipeWithContributor = { ...recipe, contributor: contributorName };
+
     try {
-      const created = await submitCommunityRecipe(recipe);
+      const created = await submitCommunityRecipe(recipeWithContributor);
       setCommunityRecipes((prev) => [...prev, created]);
       setCurrentRecipe(created);
       return true;
     } catch (error) {
       console.error('Error submitting recipe to Supabase, falling back to local:', error);
-      const fallbackRecipe = { ...recipe, id: `user-${Date.now()}` };
+      const fallbackRecipe = { ...recipeWithContributor, id: `user-${Date.now()}` };
       setUserRecipes((prev) => [...prev, fallbackRecipe]);
       setCurrentRecipe(fallbackRecipe);
       return true;
     }
+  };
+
+  const handleUpdateRecipe = async (recipeId: string, recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => {
+    // Use authenticated user's nickname if available, otherwise fall back to email or provided contributor
+    const contributorName = nickname || user?.email || recipe.contributor;
+    const recipeWithContributor = { ...recipe, contributor: contributorName };
+
+    try {
+      const updated = await updateCommunityRecipe(recipeId, recipeWithContributor);
+      // Update in community recipes
+      setCommunityRecipes((prev) => prev.map(r => r.id === recipeId ? updated : r));
+      // Update current recipe if it's the one being edited
+      if (currentRecipe && String(currentRecipe.id) === recipeId) {
+        setCurrentRecipe(updated);
+      }
+      return true;
+    } catch (error) {
+      console.error('Error updating recipe:', error);
+      // For local recipes, update in place
+      if (recipeId.startsWith('user-')) {
+        setUserRecipes((prev) => prev.map(r => r.id === recipeId ? { ...r, ...recipeWithContributor } : r));
+        if (currentRecipe && String(currentRecipe.id) === recipeId) {
+          setCurrentRecipe({ ...currentRecipe, ...recipeWithContributor });
+        }
+        return true;
+      }
+      return false;
+    }
+  };
+
+  const handleContributeClick = () => {
+    setEditingRecipe(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditRecipe = (recipe: Recipe | CommunityRecipe) => {
+    // Only allow editing community recipes (not default recipes)
+    if (typeof recipe.id === 'string' && recipe.id.startsWith('recipe:')) {
+      setEditingRecipe(recipe as CommunityRecipe);
+      setIsModalOpen(true);
+    }
+  };
+
+  // Check if current user can edit a recipe
+  const canEditRecipe = (recipe: Recipe | CommunityRecipe): boolean => {
+    if (!user) return false;
+    // Only community recipes can be edited
+    if (typeof recipe.id !== 'string' || !recipe.id.startsWith('recipe:')) {
+      return false;
+    }
+    // Check if recipe contributor matches current user's nickname or email
+    const userIdentifier = nickname || user.email;
+    return recipe.contributor === userIdentifier;
   };
 
   const getFilteredRecipes = () => {
@@ -238,9 +325,30 @@ export default function App() {
   const handleContributorClick = (contributor: string) => {
     setSelectedContributor(contributor);
     setCurrentRecipe(null);
+    setShowUserProfile(false);
   };
 
+  const handleViewMyRecipes = () => {
+    const userIdentifier = nickname || user?.email;
+    if (userIdentifier) {
+      setSelectedContributor(userIdentifier);
+      setCurrentRecipe(null);
+      setShowUserProfile(false);
+    }
+  };
+
+  // Get count of user's recipes
+  const myRecipesCount = useMemo(() => {
+    if (!user) return 0;
+    const userIdentifier = nickname || user.email;
+    return allRecipes.filter(recipe => recipe.contributor === userIdentifier).length;
+  }, [allRecipes, user, nickname]);
+
   const handleBackToMain = () => {
+    if (showUserProfile) {
+      setShowUserProfile(false);
+      return;
+    }
     // If viewing a recipe from contributor list, go back to contributor list
     if (currentRecipe && selectedContributor) {
       setCurrentRecipe(null);
@@ -266,7 +374,7 @@ export default function App() {
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center justify-between mb-2">
-              {selectedContributor ? (
+              {selectedContributor || showUserProfile ? (
                 <motion.button
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -274,7 +382,7 @@ export default function App() {
                   whileTap={{ scale: 0.9 }}
                   onClick={handleBackToMain}
                   className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                  title={currentRecipe ? "Back to contributor recipes" : "Back to all recipes"}
+                  title={showUserProfile ? "Back to main" : currentRecipe ? "Back to contributor recipes" : "Back to all recipes"}
                 >
                   <ArrowLeft className="w-5 h-5 text-purple-600" />
                 </motion.button>
@@ -282,16 +390,39 @@ export default function App() {
                 <div className="w-10"></div>
               )}
               <h1 className="text-4xl">🥤</h1>
-              {!selectedContributor && !currentRecipe ? (
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsModalOpen(true)}
-                  className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                  title="Contribute a recipe"
-                >
-                  <Plus className="w-5 h-5 text-purple-600" />
-                </motion.button>
+              {!selectedContributor && !showUserProfile ? (
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={handleContributeClick}
+                    className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                    title="Contribute a recipe"
+                  >
+                    <Plus className="w-5 h-5 text-purple-600" />
+                  </motion.button>
+                  {user ? (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setShowUserProfile(true)}
+                      className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                      title="User profile"
+                    >
+                      <User className="w-5 h-5 text-purple-600" />
+                    </motion.button>
+                  ) : (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                      title="Sign in"
+                    >
+                      <User className="w-5 h-5 text-purple-600" />
+                    </motion.button>
+                  )}
+                </div>
               ) : (
                 <div className="w-10"></div>
               )}
@@ -318,7 +449,20 @@ export default function App() {
         {/* Main Content */}
         <main className="flex-1 flex items-center justify-center p-6">
           <AnimatePresence mode="wait">
-            {selectedContributor && !currentRecipe && (
+            {showUserProfile && (
+              <UserProfileView
+                key="user-profile"
+                onEditNickname={() => setIsNicknameModalOpen(true)}
+                onChangePassword={() => setIsPasswordChangeModalOpen(true)}
+                onSignOut={async () => {
+                  await signOut();
+                  setShowUserProfile(false);
+                }}
+                onViewMyRecipes={handleViewMyRecipes}
+                recipeCount={myRecipesCount}
+              />
+            )}
+            {selectedContributor && !currentRecipe && !showUserProfile && (
               <ContributorRecipesView
                 key="contributor-view"
                 contributor={selectedContributor}
@@ -326,7 +470,7 @@ export default function App() {
                 onSelectRecipe={handleSelectRecipe}
               />
             )}
-            {!selectedContributor && !currentRecipe && !isShaking && !isLoadingRecipes && (
+            {!selectedContributor && !currentRecipe && !isShaking && !isLoadingRecipes && !showUserProfile && (
               <ShakeInstruction 
                 key="instruction" 
                 onManualShake={handleManualShake} 
@@ -334,7 +478,7 @@ export default function App() {
                 favoritesOnly={favoritesOnly}
               />
             )}
-            {isLoadingRecipes && !selectedContributor && !currentRecipe && (
+            {isLoadingRecipes && !selectedContributor && !currentRecipe && !showUserProfile && (
               <motion.div
                 key="loading"
                 initial={{ opacity: 0 }}
@@ -375,20 +519,22 @@ export default function App() {
                 </svg>
               </motion.div>
             )}
-            {currentRecipe && !isShaking && (
+            {currentRecipe && !isShaking && !showUserProfile && (
               <RecipeCard 
                 key={currentRecipe.id} 
                 recipe={currentRecipe}
                 isFavorite={favorites.has(currentRecipe.id)}
                 onToggleFavorite={toggleFavorite}
                 onContributorClick={handleContributorClick}
+                onEdit={handleEditRecipe}
+                canEdit={canEditRecipe(currentRecipe)}
               />
             )}
           </AnimatePresence>
         </main>
 
         {/* Footer */}
-        {!selectedContributor && (
+        {!selectedContributor && !showUserProfile && (
           <footer className="p-6 text-center">
             {shakeCount > 0 && (
               <motion.p
@@ -410,11 +556,28 @@ export default function App() {
         )}
       </div>
 
-      {/* Contribution Modal */}
+      {/* Auth Modals */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+      <NicknameEditModal
+        isOpen={isNicknameModalOpen}
+        onClose={() => setIsNicknameModalOpen(false)}
+      />
+      <PasswordChangeModal
+        isOpen={isPasswordChangeModalOpen}
+        onClose={() => setIsPasswordChangeModalOpen(false)}
+      />
       <ContributeRecipeModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingRecipe(null);
+        }}
         onSubmit={handleSubmitRecipe}
+        editingRecipe={editingRecipe}
+        onUpdate={handleUpdateRecipe}
       />
     </div>
   );

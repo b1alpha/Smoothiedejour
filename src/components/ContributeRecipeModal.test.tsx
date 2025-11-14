@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ContributeRecipeModal } from './ContributeRecipeModal';
+import { AuthProvider } from '../contexts/AuthContext';
 
 describe('ContributeRecipeModal', () => {
   const mockOnClose = vi.fn();
@@ -11,39 +12,46 @@ describe('ContributeRecipeModal', () => {
     vi.clearAllMocks();
   });
 
+  // Helper to render modal with AuthProvider
+  const renderModal = (props: { isOpen: boolean; onClose: typeof mockOnClose; onSubmit: typeof mockOnSubmit }) => {
+    let result: ReturnType<typeof render>;
+    act(() => {
+      result = render(
+        <AuthProvider>
+          <ContributeRecipeModal {...props} />
+        </AuthProvider>
+      );
+    });
+    return result!;
+  };
+
   it('should not render when isOpen is false', () => {
-    render(
-      <ContributeRecipeModal
-        isOpen={false}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: false,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     expect(screen.queryByText('Contribute a Recipe')).not.toBeInTheDocument();
   });
 
   it('should render when isOpen is true', () => {
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     expect(screen.getByText('Contribute a Recipe')).toBeInTheDocument();
   });
 
   it('should call onClose when close button is clicked', async () => {
     const user = userEvent.setup();
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     // The close button is an X icon without accessible name, find it by its parent button
     const closeButton = screen.getByText('Contribute a Recipe').parentElement?.querySelector('button');
@@ -62,13 +70,11 @@ describe('ContributeRecipeModal', () => {
 
   it('should allow user to fill in recipe form', async () => {
     const user = userEvent.setup();
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     const nameInput = screen.getByLabelText(/recipe name/i);
     const contributorInput = screen.getByLabelText(/your name/i);
@@ -85,13 +91,11 @@ describe('ContributeRecipeModal', () => {
 
   it('should allow adding and removing ingredients', async () => {
     const user = userEvent.setup();
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     // Wait for modal to render
     await waitFor(() => {
@@ -125,13 +129,11 @@ describe('ContributeRecipeModal', () => {
     const user = userEvent.setup();
     mockOnSubmit.mockResolvedValue(true);
 
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     // Wait for modal to render
     await waitFor(() => {
@@ -169,13 +171,11 @@ describe('ContributeRecipeModal', () => {
 
   it('should not submit if no ingredients are provided', async () => {
     const user = userEvent.setup();
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     await user.type(screen.getByLabelText(/recipe name/i), 'Test Smoothie');
     
@@ -190,13 +190,11 @@ describe('ContributeRecipeModal', () => {
     const user = userEvent.setup();
     mockOnSubmit.mockResolvedValue(true);
 
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     // Wait for modal to render
     await waitFor(() => {
@@ -228,13 +226,11 @@ describe('ContributeRecipeModal', () => {
 
   it('should allow toggling containsFat and containsNuts switches', async () => {
     const user = userEvent.setup();
-    render(
-      <ContributeRecipeModal
-        isOpen={true}
-        onClose={mockOnClose}
-        onSubmit={mockOnSubmit}
-      />
-    );
+    renderModal({
+      isOpen: true,
+      onClose: mockOnClose,
+      onSubmit: mockOnSubmit,
+    });
 
     const fatSwitch = screen.getByLabelText(/contains fat/i);
     const nutsSwitch = screen.getByLabelText(/contains nuts/i);
