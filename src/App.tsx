@@ -282,7 +282,7 @@ export default function App() {
                 <div className="w-10"></div>
               )}
               <h1 className="text-4xl">🥤</h1>
-              {!selectedContributor && !currentRecipe ? (
+              {!selectedContributor ? (
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}

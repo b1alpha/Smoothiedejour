@@ -147,6 +147,29 @@ describe('App', () => {
     });
   });
 
+  it('should show plus button when viewing a recipe', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Wait for recipes to load
+    await waitFor(() => {
+      expect(screen.getByText(/Community recipes, served fresh/i)).toBeInTheDocument();
+    });
+
+    // Get a recipe by clicking "Get Another Recipe"
+    const getRecipeButton = screen.getByText('Get Another Recipe');
+    await user.click(getRecipeButton);
+
+    // Wait for recipe card to appear (after shaking animation completes)
+    await waitFor(() => {
+      expect(screen.getByTitle(/favorite/i)).toBeInTheDocument();
+    }, { timeout: 3000 });
+
+    // Plus button should still be visible
+    const contributeButton = screen.getByTitle('Contribute a recipe');
+    expect(contributeButton).toBeInTheDocument();
+  });
+
   it('should load community recipes on mount', async () => {
     const mockRecipes = [
       {
