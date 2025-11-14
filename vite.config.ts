@@ -10,6 +10,19 @@
       environment: 'happy-dom',
       setupFiles: './src/test/setup.ts',
       css: true,
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'json', 'html'],
+        exclude: [
+          'node_modules/',
+          'src/test/',
+          '**/*.test.ts',
+          '**/*.test.tsx',
+          '**/*.config.*',
+          '**/dist/',
+          '**/build/',
+        ],
+      },
     },
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
