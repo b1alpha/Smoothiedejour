@@ -64,3 +64,25 @@ Object.defineProperty(navigator, 'clipboard', {
   },
 });
 
+// Mock Supabase auth
+vi.mock('../utils/supabase/client', async () => {
+  const actual = await vi.importActual('../utils/supabase/client');
+  return {
+    ...actual,
+    supabase: {
+      auth: {
+        getSession: vi.fn().mockResolvedValue({
+          data: { session: null },
+          error: null,
+        }),
+        onAuthStateChange: vi.fn(() => ({
+          data: { subscription: { unsubscribe: vi.fn() } },
+        })),
+        signInWithPassword: vi.fn(),
+        signUp: vi.fn(),
+        signOut: vi.fn(),
+      },
+    },
+  };
+});
+

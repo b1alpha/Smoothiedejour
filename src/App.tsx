@@ -1,16 +1,19 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus, ArrowLeft, User, LogOut } from 'lucide-react';
 import { RecipeCard } from './components/RecipeCard';
 import { ShakeInstruction } from './components/ShakeInstruction';
 import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { ContributorRecipesView } from './components/ContributorRecipesView';
+import { AuthModal } from './components/AuthModal';
+import { useAuth } from './contexts/AuthContext';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
 import { fetchCommunityRecipes, submitCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
 
 export default function App() {
+  const { user, signOut } = useAuth();
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [shakeCount, setShakeCount] = useState(0);
@@ -18,6 +21,7 @@ export default function App() {
   const [noNuts, setNoNuts] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
@@ -153,17 +157,29 @@ export default function App() {
   };
 
   const handleSubmitRecipe = async (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => {
+    // Use authenticated user's email if available, otherwise use provided contributor
+    const contributorName = user?.email || recipe.contributor;
+    const recipeWithContributor = { ...recipe, contributor: contributorName };
+
     try {
-      const created = await submitCommunityRecipe(recipe);
+      const created = await submitCommunityRecipe(recipeWithContributor);
       setCommunityRecipes((prev) => [...prev, created]);
       setCurrentRecipe(created);
       return true;
     } catch (error) {
       console.error('Error submitting recipe to Supabase, falling back to local:', error);
-      const fallbackRecipe = { ...recipe, id: `user-${Date.now()}` };
+      const fallbackRecipe = { ...recipeWithContributor, id: `user-${Date.now()}` };
       setUserRecipes((prev) => [...prev, fallbackRecipe]);
       setCurrentRecipe(fallbackRecipe);
       return true;
+    }
+  };
+
+  const handleContributeClick = () => {
+    if (!user) {
+      setIsAuthModalOpen(true);
+    } else {
+      setIsModalOpen(true);
     }
   };
 
@@ -296,15 +312,63 @@ export default function App() {
               )}
               <h1 className="text-4xl">🥤</h1>
               {!selectedContributor ? (
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsModalOpen(true)}
-                  className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
-                  title="Contribute a recipe"
-                >
-                  <Plus className="w-5 h-5 text-purple-600" />
-                </motion.button>
+                <div className="flex items-center gap-2">
+                  {user ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="flex items-center gap-2"
+                    >
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleContributeClick}
+                        className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                        title="Contribute a recipe"
+                      >
+                        <Plus className="w-5 h-5 text-purple-600" />
+                      </motion.button>
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        className="relative group"
+                      >
+                        <motion.button
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setIsAuthModalOpen(true)}
+                          className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                          title={user.email || 'User profile'}
+                        >
+                          <User className="w-5 h-5 text-purple-600" />
+                        </motion.button>
+                        {/* Dropdown menu */}
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                          <div className="p-3 border-b border-gray-200">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {user.email}
+                            </p>
+                          </div>
+                          <button
+                            onClick={signOut}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            Sign Out
+                          </button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md hover:shadow-lg transition-all"
+                      title="Sign in"
+                    >
+                      <User className="w-5 h-5 text-purple-600" />
+                    </motion.button>
+                  )}
+                </div>
               ) : (
                 <div className="w-10"></div>
               )}
@@ -424,6 +488,10 @@ export default function App() {
       </div>
 
       {/* Contribution Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
       <ContributeRecipeModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

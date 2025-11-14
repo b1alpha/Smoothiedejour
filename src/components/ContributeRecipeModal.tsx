@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
+import { useAuth } from '../contexts/AuthContext';
 import type { CommunityRecipe } from '../utils/supabase/community';
 
 interface ContributeRecipeModalProps {
@@ -18,7 +19,9 @@ const emojiOptions = ['🥤', '🥭', '🫐', '🍓', '🍌', '🍊', '🥬', '�
 const colorOptions = ['#FF6B6B', '#FFA500', '#FFD700', '#32CD32', '#9333EA', '#FF1493', '#4B0082', '#FF6347'];
 
 export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeRecipeModalProps) {
+  const { user } = useAuth();
   const [name, setName] = useState('');
+  // Use user email as initial value, will be updated when modal opens if user changes
   const [contributor, setContributor] = useState('');
   const [emoji, setEmoji] = useState('🥤');
   const [color, setColor] = useState('#9333EA');
@@ -30,6 +33,30 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
   const [containsNuts, setContainsNuts] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Reset form when modal opens/closes
+  // Note: This is a valid use case for syncing external state (user) to form state
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    if (isOpen) {
+      // Set contributor from user email when modal opens
+      setContributor(user?.email || '');
+    } else {
+      // Reset form when modal closes
+      setName('');
+      setContributor('');
+      setEmoji('🥤');
+      setColor('#9333EA');
+      setIngredients(['']);
+      setInstructions('');
+      setServings('1');
+      setPrepTime('5 min');
+      setContainsFat(false);
+      setContainsNuts(false);
+      setShowSuccess(false);
+    }
+  }, [isOpen, user?.email]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, '']);
@@ -149,15 +176,23 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
                 </div>
 
                 <div>
-                  <Label htmlFor="contributor">Your Name *</Label>
+                  <Label htmlFor="contributor">
+                    {user ? 'Your Email' : 'Your Name *'}
+                  </Label>
                   <Input
                     id="contributor"
                     value={contributor}
                     onChange={(e) => setContributor(e.target.value)}
-                    placeholder="e.g., Sarah M."
+                    placeholder={user ? user.email : 'e.g., Sarah M.'}
                     required
+                    disabled={!!user}
                     className="mt-1"
                   />
+                  {user && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Using your account email
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

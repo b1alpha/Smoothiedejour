@@ -22,6 +22,25 @@ A community-driven smoothie recipe app built with React, Vite, and TypeScript.
    npm install
    ```
 
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory with your Supabase credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Then edit `.env` and add your Supabase project credentials:
+   - Get your Supabase URL and anon key from your [Supabase Dashboard](https://supabase.com/dashboard)
+   - Go to your project → Settings → API
+   - Copy the "Project URL" and "anon public" key
+   
+   ```env
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key-here
+   ```
+   
+   **Note:** The `.env` file is gitignored and won't be committed to the repository.
+
 ### Running the Development Server
 
 Start the development server:

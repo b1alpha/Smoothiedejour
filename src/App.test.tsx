@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
+import { AuthProvider } from './contexts/AuthContext';
 import * as communityUtils from './utils/supabase/community';
 import { smoothieRecipes } from './data/recipes';
 
@@ -10,6 +11,39 @@ vi.mock('./utils/supabase/community', () => ({
   fetchCommunityRecipes: vi.fn(),
   submitCommunityRecipe: vi.fn(),
 }));
+
+// Mock Supabase client
+vi.mock('./utils/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      }),
+      onAuthStateChange: vi.fn(() => ({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      })),
+      signInWithPassword: vi.fn().mockResolvedValue({
+        data: { user: { id: 'test-user', email: 'test@example.com' }, session: {} },
+        error: null,
+      }),
+      signUp: vi.fn().mockResolvedValue({
+        data: { user: { id: 'test-user', email: 'test@example.com' }, session: {} },
+        error: null,
+      }),
+      signOut: vi.fn().mockResolvedValue({ error: null }),
+    },
+  },
+}));
+
+// Helper to render App with AuthProvider
+const renderApp = () => {
+  return render(
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  );
+};
 
 describe('App', () => {
   beforeEach(() => {
@@ -25,7 +59,7 @@ describe('App', () => {
   });
 
   it('should render the app with header', async () => {
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
@@ -33,7 +67,7 @@ describe('App', () => {
   });
 
   it('should display recipe count in header', async () => {
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       const headerText = screen.getByText(/Community recipes, served fresh/i);
@@ -43,7 +77,7 @@ describe('App', () => {
   });
 
   it('should show shake instruction when no recipe is selected', async () => {
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByText(/shake your phone/i)).toBeInTheDocument();
@@ -52,7 +86,7 @@ describe('App', () => {
 
   it('should display a random recipe when "Get Another Recipe" is clicked', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
     await user.click(getRecipeButton);
@@ -65,7 +99,7 @@ describe('App', () => {
 
   it('should toggle favorite when favorite button is clicked', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     // First get a recipe
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -84,7 +118,7 @@ describe('App', () => {
 
   it('should filter recipes by noFat toggle', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByLabelText('No Fat')).toBeInTheDocument();
@@ -102,7 +136,7 @@ describe('App', () => {
 
   it('should filter recipes by noNuts toggle', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByLabelText('No Nuts')).toBeInTheDocument();
@@ -119,7 +153,7 @@ describe('App', () => {
 
   it('should filter recipes by favoritesOnly toggle', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Favorites Only/i)).toBeInTheDocument();
@@ -135,21 +169,22 @@ describe('App', () => {
     });
   });
 
-  it('should open contribute modal when plus button is clicked', async () => {
+  it('should open auth modal when user button is clicked and user is not logged in', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
-    const contributeButton = await screen.findByTitle('Contribute a recipe');
-    await user.click(contributeButton);
+    // When not logged in, clicking user button should open auth modal
+    const userButton = await screen.findByTitle('Sign in');
+    await user.click(userButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Contribute a Recipe')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /Sign In/i })).toBeInTheDocument();
     });
   });
 
   it('should show plus button when viewing a recipe', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     // Wait for recipes to load
     await waitFor(() => {
@@ -165,9 +200,9 @@ describe('App', () => {
       expect(screen.getByTitle(/favorite/i)).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Plus button should still be visible
-    const contributeButton = screen.getByTitle('Contribute a recipe');
-    expect(contributeButton).toBeInTheDocument();
+    // User button should still be visible (for sign in when not authenticated)
+    const userButton = screen.getByTitle('Sign in');
+    expect(userButton).toBeInTheDocument();
   });
 
   it('should load community recipes on mount', async () => {
@@ -189,7 +224,7 @@ describe('App', () => {
 
     vi.mocked(communityUtils.fetchCommunityRecipes).mockResolvedValue(mockRecipes);
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       expect(communityUtils.fetchCommunityRecipes).toHaveBeenCalled();
@@ -201,7 +236,7 @@ describe('App', () => {
     const mockSubmittedRecipe = {
       id: 'new-recipe-1',
       name: 'New Recipe',
-      contributor: 'Test User',
+      contributor: 'test@example.com',
       emoji: '🥤',
       color: '#9333EA',
       ingredients: ['1 banana'],
@@ -214,10 +249,28 @@ describe('App', () => {
 
     vi.mocked(communityUtils.submitCommunityRecipe).mockResolvedValue(mockSubmittedRecipe);
 
-    render(<App />);
+    // Mock authenticated session before rendering
+    const { supabase } = await import('./utils/supabase/client');
+     
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: {
+        session: {
+          user: { id: 'test-user', email: 'test@example.com' },
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
+      },
+      error: null,
+    });
+
+    renderApp();
+
+    // Wait for auth to load and plus button to appear
+    await waitFor(() => {
+      expect(screen.getByTitle('Contribute a recipe')).toBeInTheDocument();
+    });
 
     // Open modal
-    const contributeButton = await screen.findByTitle('Contribute a recipe');
+    const contributeButton = screen.getByTitle('Contribute a recipe');
     await user.click(contributeButton);
 
     await waitFor(() => {
@@ -230,7 +283,9 @@ describe('App', () => {
     });
 
     await user.type(screen.getByLabelText(/recipe name/i), 'New Recipe');
-    await user.type(screen.getByLabelText(/your name/i), 'Test User');
+    // Contributor field should be disabled and pre-filled with user email when authenticated
+    const contributorInput = screen.getByLabelText(/your email/i);
+    expect(contributorInput).toBeDisabled();
     
     // Use the correct placeholder text
     const ingredientInputs = await screen.findAllByPlaceholderText(/e.g., 1 cup frozen mango/i);
@@ -250,7 +305,7 @@ describe('App', () => {
 
   it('should persist favorites to localStorage', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     // Get a recipe and favorite it
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -272,7 +327,7 @@ describe('App', () => {
     searchParams.set('recipe', '1');
     window.history.pushState({}, '', `?${searchParams.toString()}`);
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       // Should show a recipe (not the shake instruction)
@@ -301,7 +356,7 @@ describe('App', () => {
     searchParams.set('contributor', 'Test Contributor');
     window.history.pushState({}, '', `?${searchParams.toString()}`);
 
-    render(<App />);
+    renderApp();
 
     await waitFor(() => {
       // Should show contributor's recipes view
@@ -312,7 +367,7 @@ describe('App', () => {
 
   it('should disable "Get Another Recipe" button when no recipes match filters', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     // Enable all filters that would exclude all recipes
     const noFatToggle = await screen.findByLabelText('No Fat');
