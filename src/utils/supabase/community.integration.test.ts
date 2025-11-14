@@ -34,9 +34,6 @@ describe('updateCommunityRecipe - Integration Test (Reproducing 404)', () => {
     // Simulate the exact URL from the error:
     // PUT https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes/recipe%3A1762405222159%3A19kx5
     
-    const mockBaseUrl = 'https://vbzmelpvugyixagfiftu.supabase.co/functions/v1/recipes';
-    const expectedUrl = `${mockBaseUrl}/recipe%3A1762405222159%3A19kx5`;
-    
     // Mock a 404 response to reproduce the error
     const mock404Response = {
       ok: false,
@@ -62,9 +59,6 @@ describe('updateCommunityRecipe - Integration Test (Reproducing 404)', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
       const callArgs = vi.mocked(global.fetch).mock.calls[0];
       const actualUrl = callArgs[0] as string;
-      
-      console.log('Actual URL called:', actualUrl);
-      console.log('Expected URL pattern:', expectedUrl);
       
       // The URL should match the pattern from the error
       expect(actualUrl).toContain('/functions/v1/recipes/');
@@ -100,8 +94,6 @@ describe('updateCommunityRecipe - Integration Test (Reproducing 404)', () => {
 
     const callArgs = vi.mocked(global.fetch).mock.calls[0];
     const url = callArgs[0] as string;
-    
-    console.log('PUT URL pattern:', url);
     
     // The URL should be: /functions/v1/recipes/{encodedRecipeId}
     // Pattern matches the error URL exactly

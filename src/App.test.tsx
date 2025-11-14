@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
@@ -47,11 +47,15 @@ vi.mock('./utils/supabase/client', () => ({
 
 // Helper to render App with AuthProvider
 const renderApp = () => {
-  return render(
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  );
+  let result: ReturnType<typeof render>;
+  act(() => {
+    result = render(
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    );
+  });
+  return result!;
 };
 
 describe('App', () => {

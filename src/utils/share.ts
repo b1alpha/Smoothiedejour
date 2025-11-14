@@ -50,13 +50,14 @@ export async function shareContributorList(contributor: string, recipeCount: num
         return true;
       }
     } catch (error) {
+      // Web Share API failed (user cancelled or not supported)
+      // Silently fall through to clipboard fallback
       const isAbortError = error instanceof Error && error.name === 'AbortError';
-      if (!isAbortError) {
-        console.error('Error sharing:', error);
-      }
       if (isAbortError) {
+        // User cancelled, don't fall back to clipboard
         return false;
       }
+      // Otherwise, fall through to clipboard fallback
     }
   }
   
@@ -65,21 +66,28 @@ export async function shareContributorList(contributor: string, recipeCount: num
   try {
     await navigator.clipboard.writeText(clipboardText);
     return true;
-  } catch (error) {
-    console.error('Error copying to clipboard:', error);
-    // Last resort: select text
-    const textArea = document.createElement('textarea');
-    textArea.value = clipboardText;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.select();
+  } catch {
+    // Clipboard API failed, silently try execCommand fallback
+    // (works in older browsers or when clipboard API is blocked)
     try {
-      document.execCommand('copy');
+      const textArea = document.createElement('textarea');
+      textArea.value = clipboardText;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      
+      // Select text (works better with readonly)
+      textArea.select();
+      textArea.setSelectionRange(0, clipboardText.length);
+      
+      const success = document.execCommand('copy');
       document.body.removeChild(textArea);
-      return true;
+      
+      return success;
     } catch {
-      document.body.removeChild(textArea);
+      // Both clipboard methods failed, return false silently
       return false;
     }
   }
@@ -136,13 +144,11 @@ export async function shareRecipe(recipe: { id: number | string; name: string; c
       }
       // If neither works, fall through to clipboard
     } catch (error) {
-      // User cancelled or error occurred
+      // Web Share API failed (user cancelled or not supported)
+      // Silently fall through to clipboard fallback
       const isAbortError = error instanceof Error && error.name === 'AbortError';
-      if (!isAbortError) {
-        console.error('Error sharing:', error);
-      }
-      // If user cancelled, don't fall back to clipboard
       if (isAbortError) {
+        // User cancelled, don't fall back to clipboard
         return false;
       }
       // Otherwise, fall through to clipboard fallback
@@ -154,21 +160,28 @@ export async function shareRecipe(recipe: { id: number | string; name: string; c
   try {
     await navigator.clipboard.writeText(clipboardText);
     return true;
-  } catch (error) {
-    console.error('Error copying to clipboard:', error);
-    // Last resort: select text
-    const textArea = document.createElement('textarea');
-    textArea.value = clipboardText;
-    textArea.style.position = 'fixed';
-    textArea.style.opacity = '0';
-    document.body.appendChild(textArea);
-    textArea.select();
+  } catch {
+    // Clipboard API failed, silently try execCommand fallback
+    // (works in older browsers or when clipboard API is blocked)
     try {
-      document.execCommand('copy');
+      const textArea = document.createElement('textarea');
+      textArea.value = clipboardText;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
+      textArea.style.top = '0';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      
+      // Select text (works better with readonly)
+      textArea.select();
+      textArea.setSelectionRange(0, clipboardText.length);
+      
+      const success = document.execCommand('copy');
       document.body.removeChild(textArea);
-      return true;
+      
+      return success;
     } catch {
-      document.body.removeChild(textArea);
+      // Both clipboard methods failed, return false silently
       return false;
     }
   }

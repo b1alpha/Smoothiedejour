@@ -73,8 +73,10 @@ export default function App() {
       })
       .catch((err) => {
         // Only log error details if it's not a connection refused (expected when localhost not running)
+        // and not in test environment (tests intentionally trigger this error)
         const isConnectionRefused = err instanceof TypeError && err.message === 'Failed to fetch';
-        if (!isConnectionRefused) {
+        const isTestEnv = import.meta.env.MODE === 'test' || typeof vi !== 'undefined';
+        if (!isConnectionRefused && !isTestEnv) {
           console.error('Failed to load community recipes:', err);
         }
         // Mark as failed so we show defaults as fallback

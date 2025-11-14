@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PasswordChangeModal } from './PasswordChangeModal';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -13,11 +13,15 @@ describe('PasswordChangeModal', () => {
 
   // Helper to render modal with AuthProvider
   const renderModal = (props: { isOpen: boolean; onClose: typeof mockOnClose }) => {
-    return render(
-      <AuthProvider>
-        <PasswordChangeModal {...props} />
-      </AuthProvider>
-    );
+    let result: ReturnType<typeof render>;
+    act(() => {
+      result = render(
+        <AuthProvider>
+          <PasswordChangeModal {...props} />
+        </AuthProvider>
+      );
+    });
+    return result!;
   };
 
   it('should not render when isOpen is false', () => {
