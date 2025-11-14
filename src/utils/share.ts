@@ -5,6 +5,87 @@ export interface ShareOptions {
 }
 
 /**
+ * Share a contributor's recipe list using Web Share API if available, otherwise fallback to copy link
+ */
+export async function shareContributorList(contributor: string, recipeCount: number): Promise<boolean> {
+  // URL encode the contributor name to handle special characters
+  const encodedContributor = encodeURIComponent(contributor);
+  const shareUrl = `${window.location.origin}${window.location.pathname}?contributor=${encodedContributor}`;
+  const shareText = `Check out ${contributor}'s smoothie recipes! ${recipeCount} ${recipeCount === 1 ? 'recipe' : 'recipes'} available.`;
+  
+  // Try sharing with text-only first (includes URL in text for apps like Signal)
+  const textOnlyData = {
+    title: `${contributor}'s Smoothie Recipes`,
+    text: `${shareText}\n${shareUrl}`,
+  };
+  
+  // Full share data with both text and url for apps that support it
+  const shareData: ShareOptions = {
+    title: `${contributor}'s Smoothie Recipes`,
+    text: shareText,
+    url: shareUrl,
+  };
+
+  // Check if Web Share API is available (mobile browsers)
+  if (navigator.share) {
+    try {
+      // Try text-only first (better for Signal and similar apps)
+      const canShareTextOnly = !navigator.canShare || navigator.canShare(textOnlyData);
+      
+      if (canShareTextOnly) {
+        try {
+          await navigator.share(textOnlyData);
+          return true;
+        } catch (textOnlyError) {
+          const isAbortError = textOnlyError instanceof Error && textOnlyError.name === 'AbortError';
+          if (isAbortError) {
+            return false;
+          }
+        }
+      }
+      
+      // Fall back to full share data if text-only didn't work
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+        return true;
+      }
+    } catch (error) {
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
+      if (!isAbortError) {
+        console.error('Error sharing:', error);
+      }
+      if (isAbortError) {
+        return false;
+      }
+    }
+  }
+  
+  // Fallback: Copy to clipboard (include text + URL)
+  const clipboardText = `${shareText}\n${shareUrl}`;
+  try {
+    await navigator.clipboard.writeText(clipboardText);
+    return true;
+  } catch (error) {
+    console.error('Error copying to clipboard:', error);
+    // Last resort: select text
+    const textArea = document.createElement('textarea');
+    textArea.value = clipboardText;
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return true;
+    } catch {
+      document.body.removeChild(textArea);
+      return false;
+    }
+  }
+}
+
+/**
  * Share a recipe using Web Share API if available, otherwise fallback to copy link
  */
 export async function shareRecipe(recipe: { id: number | string; name: string; contributor: string; emoji: string }): Promise<boolean> {

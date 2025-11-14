@@ -1,4 +1,6 @@
 import { motion } from 'motion/react';
+import { Share2 } from 'lucide-react';
+import { shareContributorList } from '../utils/share';
 
 interface Recipe {
   id: number | string;
@@ -15,6 +17,10 @@ interface ContributorRecipesViewProps {
 }
 
 export function ContributorRecipesView({ contributor, recipes, onSelectRecipe }: ContributorRecipesViewProps) {
+  const handleShare = async () => {
+    await shareContributorList(contributor, recipes.length);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -26,9 +32,19 @@ export function ContributorRecipesView({ contributor, recipes, onSelectRecipe }:
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           Recipes by {contributor}
         </h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 mb-4">
           {recipes.length} {recipes.length === 1 ? 'recipe' : 'recipes'}
         </p>
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleShare}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full shadow-md hover:shadow-lg transition-all"
+          title="Share this contributor's recipes"
+        >
+          <Share2 className="w-4 h-4" />
+          <span className="text-sm font-medium">Share</span>
+        </motion.button>
       </div>
 
       <div className="space-y-4 max-h-[60vh] overflow-y-auto px-2">

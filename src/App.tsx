@@ -111,16 +111,29 @@ export default function App() {
     return () => clearInterval(interval);
   }, [userRecipes]);
 
-  // Load recipe from URL parameter on mount
+  // Load recipe or contributor from URL parameter on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const recipeId = params.get('recipe');
+    const contributorParam = params.get('contributor');
+    
     if (recipeId && allRecipes.length > 0) {
       // URLSearchParams.get() automatically decodes the value
       const decodedRecipeId = decodeURIComponent(recipeId);
       const recipe = allRecipes.find(r => String(r.id) === decodedRecipeId);
       if (recipe) {
         setCurrentRecipe(recipe);
+        // Clean up URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } else if (contributorParam && allRecipes.length > 0) {
+      // URLSearchParams.get() automatically decodes the value
+      const decodedContributor = decodeURIComponent(contributorParam);
+      // Check if this contributor has any recipes
+      const hasRecipes = allRecipes.some(r => r.contributor === decodedContributor);
+      if (hasRecipes) {
+        setSelectedContributor(decodedContributor);
+        setCurrentRecipe(null);
         // Clean up URL without reloading
         window.history.replaceState({}, '', window.location.pathname);
       }

@@ -280,6 +280,36 @@ describe('App', () => {
     }, { timeout: 2000 });
   });
 
+  it('should load contributor list from URL parameter', async () => {
+    // Mock community recipes with a specific contributor
+    const mockRecipes = [
+      {
+        id: 'community-1',
+        name: 'Community Smoothie',
+        contributor: 'Test Contributor',
+        emoji: '🥤',
+        color: '#9333EA',
+        ingredients: ['1 banana'],
+        instructions: 'Blend',
+        createdAt: '2024-01-01',
+      },
+    ];
+    vi.mocked(communityUtils.fetchCommunityRecipes).mockResolvedValue(mockRecipes);
+
+    // Set URL parameter
+    const searchParams = new URLSearchParams();
+    searchParams.set('contributor', 'Test Contributor');
+    window.history.pushState({}, '', `?${searchParams.toString()}`);
+
+    render(<App />);
+
+    await waitFor(() => {
+      // Should show contributor's recipes view
+      expect(screen.getByText(/Recipes by Test Contributor/i)).toBeInTheDocument();
+      expect(screen.getByTitle(/Share this contributor's recipes/i)).toBeInTheDocument();
+    });
+  });
+
   it('should disable "Get Another Recipe" button when no recipes match filters', async () => {
     const user = userEvent.setup();
     render(<App />);
