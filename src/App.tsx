@@ -7,13 +7,14 @@ import { FilterToggles } from './components/FilterToggles';
 import { ContributeRecipeModal } from './components/ContributeRecipeModal';
 import { ContributorRecipesView } from './components/ContributorRecipesView';
 import { AuthModal } from './components/AuthModal';
+import { NicknameEditModal } from './components/NicknameEditModal';
 import { useAuth } from './contexts/AuthContext';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
 import { fetchCommunityRecipes, submitCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
 
 export default function App() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, nickname } = useAuth();
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [shakeCount, setShakeCount] = useState(0);
@@ -22,6 +23,7 @@ export default function App() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isNicknameModalOpen, setIsNicknameModalOpen] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
@@ -157,8 +159,8 @@ export default function App() {
   };
 
   const handleSubmitRecipe = async (recipe: Omit<CommunityRecipe, 'id' | 'createdAt'>) => {
-    // Use authenticated user's email if available, otherwise use provided contributor
-    const contributorName = user?.email || recipe.contributor;
+    // Use authenticated user's nickname if available, otherwise fall back to email or provided contributor
+    const contributorName = nickname || user?.email || recipe.contributor;
     const recipeWithContributor = { ...recipe, contributor: contributorName };
 
     try {
@@ -341,12 +343,24 @@ export default function App() {
                           <User className="w-5 h-5 text-purple-600" />
                         </motion.button>
                         {/* Dropdown menu */}
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                           <div className="p-3 border-b border-gray-200">
                             <p className="text-sm font-medium text-gray-800 truncate">
-                              {user.email}
+                              {nickname || user.email}
                             </p>
+                            {nickname && (
+                              <p className="text-xs text-gray-500 truncate mt-1">
+                                {user.email}
+                              </p>
+                            )}
                           </div>
+                          <button
+                            onClick={() => setIsNicknameModalOpen(true)}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <User className="w-4 h-4" />
+                            {nickname ? 'Edit Nickname' : 'Set Nickname'}
+                          </button>
                           <button
                             onClick={signOut}
                             className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -487,10 +501,14 @@ export default function App() {
         )}
       </div>
 
-      {/* Contribution Modal */}
+      {/* Auth Modals */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+      <NicknameEditModal
+        isOpen={isNicknameModalOpen}
+        onClose={() => setIsNicknameModalOpen(false)}
       />
       <ContributeRecipeModal
         isOpen={isModalOpen}

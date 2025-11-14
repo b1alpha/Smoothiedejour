@@ -19,7 +19,7 @@ const emojiOptions = ['🥤', '🥭', '🫐', '🍓', '🍌', '🍊', '🥬', '�
 const colorOptions = ['#FF6B6B', '#FFA500', '#FFD700', '#32CD32', '#9333EA', '#FF1493', '#4B0082', '#FF6347'];
 
 export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeRecipeModalProps) {
-  const { user } = useAuth();
+  const { user, nickname } = useAuth();
   const [name, setName] = useState('');
   // Use user email as initial value, will be updated when modal opens if user changes
   const [contributor, setContributor] = useState('');
@@ -39,8 +39,8 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen) {
-      // Set contributor from user email when modal opens
-      setContributor(user?.email || '');
+      // Set contributor from user nickname or email when modal opens
+      setContributor(nickname || user?.email || '');
     } else {
       // Reset form when modal closes
       setName('');
@@ -55,7 +55,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
       setContainsNuts(false);
       setShowSuccess(false);
     }
-  }, [isOpen, user?.email]);
+  }, [isOpen, user?.email, nickname]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleAddIngredient = () => {
@@ -177,20 +177,20 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit }: ContributeR
 
                 <div>
                   <Label htmlFor="contributor">
-                    {user ? 'Your Email' : 'Your Name *'}
+                    {user ? 'Your Nickname' : 'Your Name *'}
                   </Label>
                   <Input
                     id="contributor"
                     value={contributor}
                     onChange={(e) => setContributor(e.target.value)}
-                    placeholder={user ? user.email : 'e.g., Sarah M.'}
+                    placeholder={user ? (nickname || user.email) : 'e.g., Sarah M.'}
                     required
                     disabled={!!user}
                     className="mt-1"
                   />
                   {user && (
                     <p className="mt-1 text-xs text-gray-500">
-                      Using your account email
+                      {nickname ? 'This will appear on your recipes' : 'Set a nickname in your profile to hide your email'}
                     </p>
                   )}
                 </div>

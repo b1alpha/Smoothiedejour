@@ -13,6 +13,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { signIn, signUp } = useAuth();
@@ -23,9 +24,15 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     setLoading(true);
 
     try {
+      if (mode === 'signup' && !nickname.trim()) {
+        setError('Please enter a nickname');
+        setLoading(false);
+        return;
+      }
+
       const { error } = mode === 'signin' 
         ? await signIn(email, password)
-        : await signUp(email, password);
+        : await signUp(email, password, nickname);
 
       if (error) {
         setError(error.message);
@@ -34,6 +41,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
         onClose();
         setEmail('');
         setPassword('');
+        setNickname('');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -83,6 +91,25 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {mode === 'signup' && (
+              <div>
+                <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
+                  Nickname <span className="text-gray-500">(shown on your recipes)</span>
+                </label>
+                <input
+                  id="nickname"
+                  type="text"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  required={mode === 'signup'}
+                  minLength={2}
+                  maxLength={30}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  placeholder="e.g., SmoothieMaster"
+                />
+              </div>
+            )}
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
@@ -138,6 +165,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
               onClick={() => {
                 setMode(mode === 'signin' ? 'signup' : 'signin');
                 setError(null);
+                setNickname('');
               }}
               className="text-sm text-purple-600 hover:text-purple-700 underline"
             >

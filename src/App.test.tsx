@@ -20,15 +20,23 @@ vi.mock('./utils/supabase/client', () => ({
         data: { session: null },
         error: null,
       }),
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} } },
+        error: null,
+      }),
       onAuthStateChange: vi.fn(() => ({
         data: { subscription: { unsubscribe: vi.fn() } },
       })),
       signInWithPassword: vi.fn().mockResolvedValue({
-        data: { user: { id: 'test-user', email: 'test@example.com' }, session: {} },
+        data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} }, session: {} },
         error: null,
       }),
       signUp: vi.fn().mockResolvedValue({
-        data: { user: { id: 'test-user', email: 'test@example.com' }, session: {} },
+        data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} }, session: {} },
+        error: null,
+      }),
+      updateUser: vi.fn().mockResolvedValue({
+        data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: { nickname: 'TestUser' } } },
         error: null,
       }),
       signOut: vi.fn().mockResolvedValue({ error: null }),
@@ -283,8 +291,8 @@ describe('App', () => {
     });
 
     await user.type(screen.getByLabelText(/recipe name/i), 'New Recipe');
-    // Contributor field should be disabled and pre-filled with user email when authenticated
-    const contributorInput = screen.getByLabelText(/your email/i);
+    // Contributor field should be disabled and pre-filled with user nickname/email when authenticated
+    const contributorInput = screen.getByLabelText(/your nickname/i);
     expect(contributorInput).toBeDisabled();
     
     // Use the correct placeholder text
