@@ -5,6 +5,16 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
 
+// Configure React to handle async updates in test environment
+// This ensures React properly batches state updates from third-party components
+// Set on both globalThis and process.env for maximum compatibility
+if (typeof globalThis !== 'undefined') {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+}
+if (typeof process !== 'undefined') {
+  process.env.IS_REACT_ACT_ENVIRONMENT = 'true';
+}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();

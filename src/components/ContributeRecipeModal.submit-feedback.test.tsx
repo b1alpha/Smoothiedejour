@@ -1,6 +1,5 @@
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom/vitest';
 import { ContributeRecipeModal } from './ContributeRecipeModal';
@@ -14,19 +13,29 @@ describe('ContributeRecipeModal Submit Feedback', () => {
     vi.clearAllMocks();
   });
 
-  const renderModal = (props: { isOpen: boolean; onClose: typeof mockOnClose; onSubmit: typeof mockOnSubmit }) => {
-    return render(
-      React.createElement(
-        AuthProvider,
-        {},
-        React.createElement(ContributeRecipeModal, props)
-      )
-    );
+  const renderModal = async (props: { isOpen: boolean; onClose: typeof mockOnClose; onSubmit: typeof mockOnSubmit }) => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(
+        <AuthProvider>
+          <ContributeRecipeModal {...props} />
+        </AuthProvider>
+      );
+    });
+    // Wait for all async state updates from Switch components to complete after render
+    if (props.isOpen) {
+      await act(async () => {
+        await waitFor(() => {
+          expect(screen.queryByText('Contribute a Recipe')).toBeInTheDocument();
+        });
+      });
+    }
+    return result!;
   };
 
   it('should show error summary when submitting empty form', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -65,7 +74,7 @@ describe('ContributeRecipeModal Submit Feedback', () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoViewMock;
 
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -94,7 +103,7 @@ describe('ContributeRecipeModal Submit Feedback', () => {
 
   it('should focus first error input when validation fails', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -126,7 +135,7 @@ describe('ContributeRecipeModal Submit Feedback', () => {
     const user = userEvent.setup();
     mockOnSubmit.mockResolvedValue(true);
 
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,

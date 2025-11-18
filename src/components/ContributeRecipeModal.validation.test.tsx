@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ContributeRecipeModal } from './ContributeRecipeModal';
 import { AuthProvider } from '../contexts/AuthContext';
@@ -12,12 +12,24 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
     vi.clearAllMocks();
   });
 
-  const renderModal = (props: { isOpen: boolean; onClose: typeof mockOnClose; onSubmit: typeof mockOnSubmit }) => {
-    return render(
-      <AuthProvider>
-        <ContributeRecipeModal {...props} />
-      </AuthProvider>
-    );
+  const renderModal = async (props: { isOpen: boolean; onClose: typeof mockOnClose; onSubmit: typeof mockOnSubmit }) => {
+    let result: ReturnType<typeof render>;
+    await act(async () => {
+      result = render(
+        <AuthProvider>
+          <ContributeRecipeModal {...props} />
+        </AuthProvider>
+      );
+    });
+    // Wait for all async state updates from Switch components to complete after render
+    if (props.isOpen) {
+      await act(async () => {
+        await waitFor(() => {
+          expect(screen.queryByText('Contribute a Recipe')).toBeInTheDocument();
+        });
+      });
+    }
+    return result!;
   };
 
   // Helper to wait for modal to be ready
@@ -41,7 +53,7 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
 
   it('should show error summary when submitting empty form', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -65,7 +77,7 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
 
   it('should show inline error when field is invalid and blurred', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -84,7 +96,7 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
 
   it('should clear error when field is corrected', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -113,7 +125,7 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
     const user = userEvent.setup();
     mockOnSubmit.mockResolvedValue(true);
 
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
@@ -135,7 +147,7 @@ describe('ContributeRecipeModal Validation (UI Integration)', () => {
 
   it('should not submit form when validation fails', async () => {
     const user = userEvent.setup();
-    renderModal({
+    await renderModal({
       isOpen: true,
       onClose: mockOnClose,
       onSubmit: mockOnSubmit,
