@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -8,6 +10,7 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { useAuth } from '../contexts/AuthContext';
 import type { CommunityRecipe } from '../utils/supabase/community';
+import { recipeSchema, type RecipeFormData } from '../utils/validation/recipeSchema';
 
 interface ContributeRecipeModalProps {
   isOpen: boolean;
@@ -23,104 +26,102 @@ const colorOptions = ['#FF6B6B', '#FFA500', '#FFD700', '#32CD32', '#9333EA', '#F
 export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe, onUpdate }: ContributeRecipeModalProps) {
   const { user, nickname } = useAuth();
   const isEditing = !!editingRecipe;
-  const [name, setName] = useState('');
-  // Use user email as initial value, will be updated when modal opens if user changes
-  const [contributor, setContributor] = useState('');
-  const [emoji, setEmoji] = useState('🥤');
-  const [color, setColor] = useState('#9333EA');
-  const [ingredients, setIngredients] = useState(['']);
-  const [instructions, setInstructions] = useState('');
-  const [servings, setServings] = useState('1');
-  const [prepTime, setPrepTime] = useState('5 min');
-  const [containsFat, setContainsFat] = useState(false);
-  const [containsNuts, setContainsNuts] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isSubmitted, submitCount },
+    reset,
+    watch,
+    setValue,
+    trigger,
+  } = useForm<RecipeFormData>({
+    resolver: zodResolver(recipeSchema),
+    mode: 'onBlur', // Validate on blur for better UX
+    reValidateMode: 'onBlur', // Re-validate on blur
+    defaultValues: {
+      name: '',
+      contributor: '',
+      emoji: '🥤',
+      color: '#9333EA',
+      ingredients: [''],
+      instructions: '',
+      servings: '1',
+      prepTime: '5 min',
+      containsFat: false,
+      containsNuts: false,
+    },
+  });
+
+  const watchedIngredients = watch('ingredients');
+  const watchedEmoji = watch('emoji');
+  const watchedColor = watch('color');
 
   // Reset form when modal opens/closes or editing recipe changes
-  // Note: This is a valid use case for syncing external state (user) to form state
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen) {
+      setSubmitAttempted(false);
       if (editingRecipe) {
-        // Populate form with editing recipe data
-        setName(editingRecipe.name);
-        setContributor(editingRecipe.contributor);
-        setEmoji(editingRecipe.emoji);
-        setColor(editingRecipe.color);
-        setIngredients(editingRecipe.ingredients.length > 0 ? editingRecipe.ingredients : ['']);
-        setInstructions(editingRecipe.instructions);
-        setServings(String(editingRecipe.servings));
-        setPrepTime(editingRecipe.prepTime);
-        setContainsFat(editingRecipe.containsFat);
-        setContainsNuts(editingRecipe.containsNuts);
+        reset({
+          name: editingRecipe.name,
+          contributor: editingRecipe.contributor,
+          emoji: editingRecipe.emoji,
+          color: editingRecipe.color,
+          ingredients: editingRecipe.ingredients.length > 0 ? editingRecipe.ingredients : [''],
+          instructions: editingRecipe.instructions,
+          servings: String(editingRecipe.servings),
+          prepTime: editingRecipe.prepTime,
+          containsFat: editingRecipe.containsFat,
+          containsNuts: editingRecipe.containsNuts,
+        });
       } else {
-        // Set contributor from user nickname or email when creating new recipe
-        setContributor(nickname || user?.email || '');
-        setName('');
-        setEmoji('🥤');
-        setColor('#9333EA');
-        setIngredients(['']);
-        setInstructions('');
-        setServings('1');
-        setPrepTime('5 min');
-        setContainsFat(false);
-        setContainsNuts(false);
+        reset({
+          name: '',
+          contributor: nickname || user?.email || '',
+          emoji: '🥤',
+          color: '#9333EA',
+          ingredients: [''],
+          instructions: '',
+          servings: '1',
+          prepTime: '5 min',
+          containsFat: false,
+          containsNuts: false,
+        });
       }
-      setShowSuccess(false);
     } else {
-      // Reset form when modal closes
-      setName('');
-      setContributor('');
-      setEmoji('🥤');
-      setColor('#9333EA');
-      setIngredients(['']);
-      setInstructions('');
-      setServings('1');
-      setPrepTime('5 min');
-      setContainsFat(false);
-      setContainsNuts(false);
-      setShowSuccess(false);
+      setSubmitAttempted(false);
+      reset();
     }
-  }, [isOpen, user?.email, nickname, editingRecipe]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }, [isOpen, user?.email, nickname, editingRecipe, reset]);
 
   const handleAddIngredient = () => {
-    setIngredients([...ingredients, '']);
+    const current = watchedIngredients || [''];
+    setValue('ingredients', [...current, ''], { shouldValidate: false });
   };
 
   const handleRemoveIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
-  };
-
-  const handleIngredientChange = (index: number, value: string) => {
-    const newIngredients = [...ingredients];
-    newIngredients[index] = value;
-    setIngredients(newIngredients);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    const filteredIngredients = ingredients.filter(i => i.trim() !== '');
-    
-    if (filteredIngredients.length === 0) {
-      setIsSubmitting(false);
-      return;
+    const current = watchedIngredients || [''];
+    if (current.length > 1) {
+      setValue('ingredients', current.filter((_, i) => i !== index), { shouldValidate: true });
     }
+  };
 
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+
+  const onFormSubmit = async (data: RecipeFormData) => {
+    // Don't set submitAttempted here - only set it in handleFormError
     const recipe = {
-      name,
-      contributor,
-      emoji,
-      color,
-      ingredients: filteredIngredients,
-      instructions,
-      servings: parseInt(servings),
-      prepTime,
-      containsFat,
-      containsNuts,
+      name: data.name,
+      contributor: data.contributor,
+      emoji: data.emoji,
+      color: data.color,
+      ingredients: data.ingredients.filter(i => i.trim() !== ''),
+      instructions: data.instructions,
+      servings: parseInt(data.servings, 10),
+      prepTime: data.prepTime,
+      containsFat: data.containsFat,
+      containsNuts: data.containsNuts,
     };
 
     let success = false;
@@ -129,33 +130,44 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
     } else {
       success = await onSubmit(recipe);
     }
-    
+
     if (success) {
       setShowSuccess(true);
-      
       // Wait 1.5 seconds then close and reset
       setTimeout(() => {
         setShowSuccess(false);
-        setIsSubmitting(false);
-        
-        // Reset form
-        setName('');
-        setContributor('');
-        setEmoji('🥤');
-        setColor('#9333EA');
-        setIngredients(['']);
-        setInstructions('');
-        setServings('1');
-        setPrepTime('5 min');
-        setContainsFat(false);
-        setContainsNuts(false);
-        
+        reset();
         onClose();
       }, 1500);
     } else {
-      setIsSubmitting(false);
+      // Reset success state if submission failed
+      setShowSuccess(false);
     }
   };
+
+  const handleFormError = async (errors: any) => {
+    // Set submitAttempted to show error summary
+    setSubmitAttempted(true);
+    // Trigger validation on all fields to ensure errors are populated
+    await trigger();
+    // Small delay to ensure React state updates
+    await new Promise(resolve => setTimeout(resolve, 50));
+    // Scroll to first error field
+    setTimeout(() => {
+      const firstErrorField = document.querySelector('[aria-invalid="true"]');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (firstErrorField instanceof HTMLElement) {
+          firstErrorField.focus();
+        }
+      }
+    }, 100);
+  };
+
+  // Show error summary if there are errors and form has been submitted/attempted
+  // Use submitAttempted state to ensure summary shows even if submitCount doesn't increment immediately
+  const hasAnyErrors = Object.values(errors).some(err => err != null);
+  const hasErrors = hasAnyErrors && (submitAttempted || submitCount > 0);
 
   return (
     <AnimatePresence>
@@ -194,19 +206,64 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className={`flex-1 overflow-y-auto p-6 space-y-6 relative ${showSuccess ? 'opacity-30 pointer-events-none' : ''}`}>
+            <form id="recipe-form" onSubmit={handleSubmit(onFormSubmit, handleFormError)} className={`flex-1 overflow-y-auto p-6 space-y-6 relative ${showSuccess ? 'opacity-30 pointer-events-none' : ''}`}>
+              {/* Validation Error Summary */}
+              {hasErrors && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4"
+                  data-testid="error-summary"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-600 text-lg">⚠️</span>
+                    <div className="flex-1">
+                      <h3 className="text-red-800 font-semibold text-base mb-1">Please fix the following errors:</h3>
+                      <ul className="list-disc list-inside text-base text-red-700 space-y-1 font-medium">
+                        {errors.name && (
+                          <li data-testid="error-name">Recipe Name: {errors.name.message || 'Recipe name is required'}</li>
+                        )}
+                        {errors.contributor && (
+                          <li data-testid="error-contributor">Contributor: {errors.contributor.message}</li>
+                        )}
+                        {errors.ingredients && (
+                          <li data-testid="error-ingredients">Ingredients: {errors.ingredients.message}</li>
+                        )}
+                        {errors.instructions && (
+                          <li data-testid="error-instructions">Instructions: {errors.instructions.message}</li>
+                        )}
+                        {errors.servings && (
+                          <li data-testid="error-servings">Servings: {errors.servings.message}</li>
+                        )}
+                        {errors.prepTime && (
+                          <li data-testid="error-prepTime">Prep Time: {errors.prepTime.message}</li>
+                        )}
+                        {errors.emoji && (
+                          <li data-testid="error-emoji">Emoji: {errors.emoji.message}</li>
+                        )}
+                        {errors.color && (
+                          <li data-testid="error-color">Color: {errors.color.message}</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              
               {/* Basic Info */}
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="name">Recipe Name *</Label>
                   <Input
                     id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    {...register('name')}
                     placeholder="e.g., Tropical Paradise"
-                    required
-                    className="mt-1"
+                    aria-invalid={errors.name ? 'true' : 'false'}
+                    className={`mt-1 ${errors.name ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
+                  {errors.name && (
+                    <p className="mt-1 text-base text-red-600 font-medium">{errors.name.message || 'Recipe name is required'}</p>
+                  )}
                 </div>
 
                 <div>
@@ -215,14 +272,16 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                   </Label>
                   <Input
                     id="contributor"
-                    value={contributor}
-                    onChange={(e) => setContributor(e.target.value)}
+                    {...register('contributor')}
                     placeholder={user ? (nickname || user.email) : 'e.g., Sarah M.'}
-                    required
                     disabled={!!user}
-                    className="mt-1"
+                    aria-invalid={errors.contributor ? 'true' : 'false'}
+                    className={`mt-1 ${errors.contributor ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   />
-                  {user && (
+                  {errors.contributor && (
+                    <p className="mt-1 text-base text-red-600 font-medium">{errors.contributor.message || 'Contributor name is required'}</p>
+                  )}
+                  {user && !errors.contributor && (
                     <p className="mt-1 text-xs text-gray-500">
                       {nickname ? 'This will appear on your recipes' : 'Set a nickname in your profile to hide your email'}
                     </p>
@@ -236,20 +295,28 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                       id="servings"
                       type="number"
                       min="1"
-                      value={servings}
-                      onChange={(e) => setServings(e.target.value)}
-                      className="mt-1"
+                      max="100"
+                      defaultValue="1"
+                      {...register('servings')}
+                      aria-invalid={errors.servings ? 'true' : 'false'}
+                      className={`mt-1 ${errors.servings ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     />
+                    {errors.servings && (
+                      <p className="mt-1 text-base text-red-600 font-medium">{errors.servings.message || 'Servings must be a number between 1 and 100'}</p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="prepTime">Prep Time</Label>
                     <Input
                       id="prepTime"
-                      value={prepTime}
-                      onChange={(e) => setPrepTime(e.target.value)}
+                      {...register('prepTime')}
                       placeholder="e.g., 5 min"
-                      className="mt-1"
+                      aria-invalid={errors.prepTime ? 'true' : 'false'}
+                      className={`mt-1 ${errors.prepTime ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     />
+                    {errors.prepTime && (
+                      <p className="mt-1 text-base text-red-600 font-medium">{errors.prepTime.message || 'Prep time is required'}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -263,15 +330,21 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                       <button
                         key={e}
                         type="button"
-                        onClick={() => setEmoji(e)}
+                        onClick={() => {
+                          setValue('emoji', e, { shouldValidate: true });
+                          trigger('emoji');
+                        }}
                         className={`text-2xl p-2 rounded-lg border-2 transition-all ${
-                          emoji === e ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
+                          watchedEmoji === e ? 'border-purple-500 bg-purple-50' : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
                         {e}
                       </button>
                     ))}
                   </div>
+                  {errors.emoji && (
+                    <p className="mt-1 text-base text-red-600 font-medium">{errors.emoji.message || 'Please select an emoji'}</p>
+                  )}
                 </div>
 
                 <div>
@@ -281,14 +354,20 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                       <button
                         key={c}
                         type="button"
-                        onClick={() => setColor(c)}
+                        onClick={() => {
+                          setValue('color', c, { shouldValidate: true });
+                          trigger('color');
+                        }}
                         className={`w-10 h-10 rounded-lg border-2 transition-all ${
-                          color === c ? 'border-gray-800 scale-110' : 'border-gray-200'
+                          watchedColor === c ? 'border-gray-800 scale-110' : 'border-gray-200'
                         }`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
                   </div>
+                  {errors.color && (
+                    <p className="mt-1 text-base text-red-600 font-medium">{errors.color.message || 'Please select a valid color'}</p>
+                  )}
                 </div>
               </div>
 
@@ -307,15 +386,17 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {ingredients.map((ingredient, index) => (
+                  {watchedIngredients?.map((ingredient, index) => (
                     <div key={index} className="flex gap-2">
-                      <Input
-                        value={ingredient}
-                        onChange={(e) => handleIngredientChange(index, e.target.value)}
-                        placeholder="e.g., 1 cup frozen mango"
-                        required={index === 0}
-                      />
-                      {ingredients.length > 1 && (
+                      <div className="flex-1">
+                        <Input
+                          {...register(`ingredients.${index}` as const)}
+                          placeholder="e.g., 1 cup frozen mango"
+                          aria-invalid={errors.ingredients ? 'true' : 'false'}
+                          className={errors.ingredients && index === 0 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
+                        />
+                      </div>
+                      {watchedIngredients.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -327,6 +408,9 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                       )}
                     </div>
                   ))}
+                  {errors.ingredients && (
+                    <p className="text-base text-red-600 font-medium">{errors.ingredients.message || 'At least one ingredient is required'}</p>
+                  )}
                 </div>
               </div>
 
@@ -335,13 +419,15 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                 <Label htmlFor="instructions">Instructions *</Label>
                 <Textarea
                   id="instructions"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
+                  {...register('instructions')}
                   placeholder="Describe how to make this smoothie..."
-                  required
                   rows={4}
-                  className="mt-1"
+                  aria-invalid={errors.instructions ? 'true' : 'false'}
+                  className={`mt-1 ${errors.instructions ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                 />
+                {errors.instructions && (
+                  <p className="mt-1 text-base text-red-600 font-medium">{errors.instructions.message || 'Instructions are required'}</p>
+                )}
               </div>
 
               {/* Dietary Info */}
@@ -350,8 +436,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                 <div className="flex items-center gap-2">
                   <Switch
                     id="containsFat"
-                    checked={containsFat}
-                    onCheckedChange={setContainsFat}
+                    {...register('containsFat')}
                   />
                   <Label htmlFor="containsFat" className="cursor-pointer text-sm">
                     Contains fat (dairy, avocado, coconut milk, etc.)
@@ -360,8 +445,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                 <div className="flex items-center gap-2">
                   <Switch
                     id="containsNuts"
-                    checked={containsNuts}
-                    onCheckedChange={setContainsNuts}
+                    {...register('containsNuts')}
                   />
                   <Label htmlFor="containsNuts" className="cursor-pointer text-sm">
                     Contains nuts or nut products
@@ -377,7 +461,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"
+                  className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none bg-white/90"
                 >
                   <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white px-8 py-6 rounded-2xl shadow-2xl text-center">
                     <div className="text-5xl mb-3">✓</div>
@@ -400,9 +484,10 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                 Cancel
               </Button>
               <Button
-                onClick={handleSubmit}
+                type="submit"
+                form="recipe-form"
                 className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                disabled={isSubmitting}
+                disabled={isSubmitting || showSuccess}
               >
                 {isSubmitting ? (isEditing ? 'Updating...' : 'Submitting...') : (isEditing ? 'Update Recipe' : 'Submit Recipe')}
               </Button>
@@ -413,3 +498,4 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
     </AnimatePresence>
   );
 }
+

@@ -210,6 +210,8 @@ describe('ContributeRecipeModal', () => {
     await user.clear(ingredientInputs[0]);
     await user.type(ingredientInputs[0], '1 banana');
     
+    await user.type(screen.getByLabelText(/instructions/i), 'Blend everything together until smooth');
+    
     const submitButton = screen.getByRole('button', { name: /submit/i });
     await user.click(submitButton);
 
@@ -218,10 +220,10 @@ describe('ContributeRecipeModal', () => {
       expect(screen.getByText(/success!/i)).toBeInTheDocument();
     }, { timeout: 3000 });
 
-    // Wait for modal to close (the component uses setTimeout internally)
+    // Wait for modal to close (the component uses setTimeout internally - 1500ms delay)
     await waitFor(() => {
       expect(mockOnClose).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 
   it('should allow toggling containsFat and containsNuts switches', async () => {

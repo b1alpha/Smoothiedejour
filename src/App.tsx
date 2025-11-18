@@ -12,7 +12,7 @@ import { PasswordChangeModal } from './components/PasswordChangeModal';
 import { UserProfileView } from './components/UserProfileView';
 import { useAuth } from './contexts/AuthContext';
 import { smoothieRecipes as defaultRecipes } from './data/recipes';
-import { fetchCommunityRecipes, submitCommunityRecipe, updateCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
+import { fetchCommunityRecipes, submitCommunityRecipe, updateCommunityRecipe, deleteCommunityRecipe, type CommunityRecipe } from './utils/supabase/community';
 import type { Recipe } from './data/recipes';
 
 export default function App() {
@@ -29,10 +29,34 @@ export default function App() {
   const [isPasswordChangeModalOpen, setIsPasswordChangeModalOpen] = useState(false);
   const [selectedContributor, setSelectedContributor] = useState<string | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<CommunityRecipe | null>(null);
+  const [deletingRecipe, setDeletingRecipe] = useState<Recipe | CommunityRecipe | null>(null);
+  const [justDeleted, setJustDeleted] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
-    return saved ? JSON.parse(saved) : [];
+    const recipes = saved ? JSON.parse(saved) : [];
+    
+    // Auto-fix incomplete recipes on load (missing only instructions/ingredients)
+    const fixedRecipes = recipes.map((recipe: any) => {
+      if (!recipe.name || !recipe.contributor) {
+        // Can't auto-fix - return as-is (will be removed during sync)
+        return recipe;
+      }
+      // Auto-fix missing ingredients or instructions
+      return {
+        ...recipe,
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || 'Blend all ingredients together.',
+      };
+    });
+    
+    // Save fixed recipes back to localStorage
+    if (fixedRecipes.length > 0 && JSON.stringify(fixedRecipes) !== JSON.stringify(recipes)) {
+      localStorage.setItem('smoothie-user-recipes', JSON.stringify(fixedRecipes));
+    }
+    
+    return fixedRecipes;
   });
   const [favorites, setFavorites] = useState<Set<number | string>>(() => {
     const saved = localStorage.getItem('smoothie-favorites');
@@ -89,15 +113,36 @@ export default function App() {
   useEffect(() => {
     const syncLocalRecipes = async () => {
       if (userRecipes.length === 0) return;
+      
+      // Only sync if user is logged in
+      if (!user) {
+        return;
+      }
 
       // Try to submit each local recipe to Supabase
       const recipesToRemove: (number | string)[] = [];
+      const recipesToFix: Array<{ id: number | string; missingFields: string[] }> = [];
       
       for (const localRecipe of userRecipes) {
         try {
           // Remove id and createdAt - Supabase will generate new ones
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, createdAt, ...recipeToSubmit } = localRecipe;
+          
+          // Validate required fields before submitting
+          if (!recipeToSubmit.name || !recipeToSubmit.contributor || 
+              !recipeToSubmit.ingredients || !recipeToSubmit.instructions) {
+            const missingFields: string[] = [];
+            if (!recipeToSubmit.name) missingFields.push('name');
+            if (!recipeToSubmit.contributor) missingFields.push('contributor');
+            if (!recipeToSubmit.ingredients) missingFields.push('ingredients');
+            if (!recipeToSubmit.instructions) missingFields.push('instructions');
+            
+            // Track incomplete recipes but don't show error immediately
+            recipesToFix.push({ id: localRecipe.id, missingFields });
+            continue;
+          }
+          
           const created = await submitCommunityRecipe(recipeToSubmit);
           
           // Successfully submitted - mark for removal from local and add to community
@@ -111,7 +156,7 @@ export default function App() {
           });
         } catch (error) {
           // Still failed - keep it local, will retry next time
-          console.debug('Failed to sync local recipe to Supabase, will retry:', error);
+          // Don't show error immediately on page load
         }
       }
 
@@ -119,14 +164,41 @@ export default function App() {
       if (recipesToRemove.length > 0) {
         setUserRecipes((prev) => prev.filter(r => !recipesToRemove.includes(r.id)));
       }
+
+      // Remove recipes missing critical fields (can't be auto-fixed)
+      // Recipes missing only ingredients/instructions were already auto-fixed on load
+      if (recipesToFix.length > 0) {
+        const recipesToDelete: (number | string)[] = [];
+        
+        for (const { id, missingFields } of recipesToFix) {
+          // If recipe is missing critical fields (name or contributor), remove it silently
+          if (missingFields.includes('name') || missingFields.includes('contributor')) {
+            recipesToDelete.push(id);
+          }
+        }
+        
+        // Remove recipes that can't be fixed (silently)
+        if (recipesToDelete.length > 0) {
+          setUserRecipes((prev) => prev.filter(r => !recipesToDelete.includes(r.id)));
+        }
+      }
     };
 
-    // Run immediately on mount, then every 10 minutes
-    syncLocalRecipes();
-    const interval = setInterval(syncLocalRecipes, 10 * 60 * 1000); // 10 minutes
+    // Delay sync slightly to avoid showing errors immediately on page load
+    // Only sync if user is logged in
+    if (user) {
+      const timeoutId = setTimeout(() => {
+        syncLocalRecipes();
+      }, 3000); // Wait 3 seconds after page load to avoid showing errors immediately
+      
+      const interval = setInterval(syncLocalRecipes, 10 * 60 * 1000); // 10 minutes
 
-    return () => clearInterval(interval);
-  }, [userRecipes]);
+      return () => {
+        clearTimeout(timeoutId);
+        clearInterval(interval);
+      };
+    }
+  }, [userRecipes, user]);
 
   // Load recipe or contributor from URL parameter on mount
   useEffect(() => {
@@ -240,6 +312,90 @@ export default function App() {
     const userIdentifier = nickname || user.email;
     return recipe.contributor === userIdentifier;
   };
+
+  // Check if current user can delete a recipe
+  const canDeleteRecipe = (recipe: Recipe | CommunityRecipe): boolean => {
+    if (!user) return false;
+    const userIdentifier = nickname || user.email;
+    // Can delete community recipes (synced to Supabase) that belong to user
+    if (typeof recipe.id === 'string' && recipe.id.startsWith('recipe:')) {
+      return recipe.contributor === userIdentifier;
+    }
+    // Can delete local user recipes that belong to user
+    if (typeof recipe.id === 'string' && recipe.id.startsWith('user-')) {
+      return recipe.contributor === userIdentifier;
+    }
+    return false;
+  };
+
+  // Handle delete recipe
+  const handleDeleteRecipe = async (recipe: Recipe | CommunityRecipe) => {
+    const recipeId = String(recipe.id);
+    const wasCurrentRecipe = currentRecipe && String(currentRecipe.id) === recipeId;
+    
+    console.log('Deleting recipe:', recipe.name, 'wasCurrentRecipe:', wasCurrentRecipe);
+    
+    // Always remove from local state first (optimistic update)
+    // This ensures UI updates immediately even if API call fails
+    setCommunityRecipes((prev) => prev.filter(r => String(r.id) !== recipeId));
+    setUserRecipes((prev) => prev.filter(r => String(r.id) !== recipeId));
+
+    // Remove from favorites if it was favorited
+    setFavorites((prev) => {
+      const newFavorites = new Set(prev);
+      newFavorites.delete(recipe.id);
+      return newFavorites;
+    });
+
+    // Close the delete confirmation dialog first
+    setDeletingRecipe(null);
+
+    // Show "deleted" message if we deleted the current recipe
+    if (wasCurrentRecipe) {
+      // Clear currentRecipe first
+      setCurrentRecipe(null);
+      
+      // Set animation state after a brief delay to ensure currentRecipe is cleared first
+      setTimeout(() => {
+        setJustDeleted(true);
+        
+        // Hide animation after 3 seconds
+        setTimeout(() => {
+          setJustDeleted(false);
+        }, 3000);
+      }, 0);
+    } else {
+      // Clear currentRecipe immediately if it's not the current recipe
+      setCurrentRecipe((prev) => {
+        if (prev && String(prev.id) === recipeId) {
+          return null;
+        }
+        return prev;
+      });
+    }
+
+    // Try to delete from Supabase in the background (don't block UI)
+    if (recipeId.startsWith('recipe:')) {
+      try {
+        await deleteCommunityRecipe(recipeId);
+        console.log('Successfully deleted from Supabase');
+      } catch (error) {
+        console.error('Error deleting recipe from Supabase:', error);
+        // Recipe already removed from local state, so UI is correct
+        // If deletion failed, it will still exist on server but won't show in UI
+      }
+    }
+  };
+
+  // Safeguard: Clear currentRecipe if it's no longer in allRecipes
+  useEffect(() => {
+    if (currentRecipe) {
+      const recipeExists = allRecipes.some(r => String(r.id) === String(currentRecipe.id));
+      if (!recipeExists) {
+        setCurrentRecipe(null);
+      }
+    }
+  }, [allRecipes, currentRecipe]);
 
   const getFilteredRecipes = () => {
     return allRecipes.filter(recipe => {
@@ -364,8 +520,9 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-yellow-100">
-      <div className="max-w-md mx-auto min-h-screen flex flex-col">
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-pink-100 via-purple-100 to-yellow-100">
+        <div className="max-w-md mx-auto min-h-screen flex flex-col">
         {/* Header */}
         <header className="p-6 text-center">
           <motion.div
@@ -433,6 +590,23 @@ export default function App() {
             </p>
           </motion.div>
           
+          {/* Sync Error Toast */}
+          <AnimatePresence>
+            {syncError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-4 py-2 rounded-lg text-sm shadow-lg max-w-md"
+              >
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{syncError}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           <FilterToggles
             noFat={noFat}
             noNuts={noNuts}
@@ -448,6 +622,41 @@ export default function App() {
 
         {/* Main Content */}
         <main className="flex-1 flex items-center justify-center p-6">
+          {/* Deleted animation - rendered outside AnimatePresence to ensure it shows immediately */}
+          <AnimatePresence>
+            {justDeleted && !currentRecipe && !isShaking && !selectedContributor && !showUserProfile && (
+              <motion.div
+                key="deleted"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-center"
+                data-testid="delete-animation"
+                style={{ position: 'absolute', zIndex: 1000 }}
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 10, duration: 0.5 }}
+                  className="text-6xl mb-4"
+                  data-testid="trash-icon"
+                >
+                  🗑️
+                </motion.div>
+                <motion.p 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-gray-600 text-lg font-medium"
+                  data-testid="deleted-message"
+                >
+                  Recipe deleted
+                </motion.p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
           <AnimatePresence mode="wait">
             {showUserProfile && (
               <UserProfileView
@@ -470,7 +679,7 @@ export default function App() {
                 onSelectRecipe={handleSelectRecipe}
               />
             )}
-            {!selectedContributor && !currentRecipe && !isShaking && !isLoadingRecipes && !showUserProfile && (
+            {!selectedContributor && !currentRecipe && !isShaking && !isLoadingRecipes && !showUserProfile && !justDeleted && (
               <ShakeInstruction 
                 key="instruction" 
                 onManualShake={handleManualShake} 
@@ -478,7 +687,7 @@ export default function App() {
                 favoritesOnly={favoritesOnly}
               />
             )}
-            {isLoadingRecipes && !selectedContributor && !currentRecipe && !showUserProfile && (
+            {isLoadingRecipes && !selectedContributor && !currentRecipe && !showUserProfile && !justDeleted && (
               <motion.div
                 key="loading"
                 initial={{ opacity: 0 }}
@@ -490,7 +699,7 @@ export default function App() {
                 <p className="text-gray-600">Loading recipes...</p>
               </motion.div>
             )}
-            {isShaking && (
+            {isShaking && !justDeleted && (
               <motion.div
                 key="shaking"
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -519,7 +728,7 @@ export default function App() {
                 </svg>
               </motion.div>
             )}
-            {currentRecipe && !isShaking && !showUserProfile && (
+            {currentRecipe && !isShaking && !showUserProfile && !justDeleted && (
               <RecipeCard 
                 key={currentRecipe.id} 
                 recipe={currentRecipe}
@@ -527,7 +736,9 @@ export default function App() {
                 onToggleFavorite={toggleFavorite}
                 onContributorClick={handleContributorClick}
                 onEdit={handleEditRecipe}
+                onDelete={(recipe) => setDeletingRecipe(recipe)}
                 canEdit={canEditRecipe(currentRecipe)}
+                canDelete={canDeleteRecipe(currentRecipe)}
               />
             )}
           </AnimatePresence>
@@ -579,6 +790,100 @@ export default function App() {
         editingRecipe={editingRecipe}
         onUpdate={handleUpdateRecipe}
       />
-    </div>
+      </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {deletingRecipe && (
+          <>
+            {/* Dialog */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="fixed inset-0 flex items-center justify-center p-4"
+              style={{ zIndex: 9999, pointerEvents: 'auto' }}
+            >
+              <div 
+                className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full border border-gray-200 pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Recipe?</h2>
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to delete "{deletingRecipe.name}"? This action cannot be undone.
+                </p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDeletingRecipe(null);
+                    }}
+                    className="px-4 py-2 rounded-lg transition-colors border"
+                    style={{
+                      backgroundColor: 'white',
+                      borderColor: '#d1d5db',
+                      color: '#374151',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (deletingRecipe) {
+                        handleDeleteRecipe(deletingRecipe).catch((error) => {
+                          console.error('Error deleting recipe:', error);
+                        });
+                      }
+                    }}
+                    className="px-4 py-2 rounded-lg transition-colors"
+                    style={{
+                      backgroundColor: '#dc2626', // red-600
+                      color: 'white',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#b91c1c'; // red-700
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#dc2626'; // red-600
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => {
+                // Only close if clicking directly on backdrop
+                if (e.target === e.currentTarget) {
+                  setDeletingRecipe(null);
+                }
+              }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+              style={{ zIndex: 9998 }}
+            />
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
