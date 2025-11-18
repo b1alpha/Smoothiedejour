@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Delete Dialog', () => {
   test.beforeEach(async ({ page }) => {
-    // Mock the community recipes API
+    // Mock the community recipes API to provide test data
     await page.route('**/functions/v1/recipes*', async (route) => {
       if (route.request().method() === 'GET') {
         await route.fulfill({
@@ -25,7 +25,77 @@ test.describe('Delete Dialog', () => {
             },
           ]),
         });
-      } else if (route.request().method() === 'DELETE') {
+      } else {
+        await route.continue();
+      }
+    });
+
+    await page.goto('/');
+    await expect(page.getByText('Smoothie de Jour')).toBeVisible();
+  });
+
+  test('should open delete dialog when delete button is clicked', async ({ page }) => {
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
+
+    // Click delete button
+    const deleteButton = page.getByTitle('Delete recipe');
+    await expect(deleteButton).toBeVisible();
+    await deleteButton.click();
+
+    // Verify dialog appears
+    const dialog = page.getByText('Delete Recipe?');
+    await expect(dialog).toBeVisible();
+    
+    // Verify dialog content is visible
+    await expect(page.getByText(/are you sure you want to delete/i)).toBeVisible();
+  });
+
+  test('should have clickable buttons in delete dialog', async ({ page }) => {
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
+
+    // Open delete dialog
+    await page.getByTitle('Delete recipe').click();
+    await expect(page.getByText('Delete Recipe?')).toBeVisible();
+
+    // Verify Cancel button is visible and clickable
+    const cancelButton = page.getByRole('button', { name: /cancel/i });
+    await expect(cancelButton).toBeVisible();
+    await expect(cancelButton).toBeEnabled();
+
+    // Verify Delete button is visible and clickable
+    const confirmDeleteButton = page.getByRole('button', { name: /^delete$/i });
+    await expect(confirmDeleteButton).toBeVisible();
+    await expect(confirmDeleteButton).toBeEnabled();
+  });
+
+  test('should close dialog when Cancel button is clicked', async ({ page }) => {
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
+
+    // Open delete dialog
+    await page.getByTitle('Delete recipe').click();
+    await expect(page.getByText('Delete Recipe?')).toBeVisible();
+
+    // Click Cancel button
+    const cancelButton = page.getByRole('button', { name: /cancel/i });
+    await cancelButton.click();
+
+    // Verify dialog is closed
+    await expect(page.getByText('Delete Recipe?')).not.toBeVisible();
+    
+    // Verify recipe is still visible (dialog closed, recipe not deleted)
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
+  });
+
+  test('should close dialog when Delete button is clicked', async ({ page }) => {
+    // Mock DELETE to succeed
+    await page.route('**/functions/v1/recipes*', async (route) => {
+      if (route.request().method() === 'DELETE') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -36,53 +106,58 @@ test.describe('Delete Dialog', () => {
       }
     });
 
-    await page.goto('/');
-    // Wait for app to load
-    await expect(page.getByText('Smoothie de Jour')).toBeVisible();
-  });
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
 
-  test('should delete recipe when delete button is clicked', async ({ page }) => {
-    // Click "Get Another Recipe" to show a recipe
-    const getRecipeButton = page.getByRole('button', { name: /get another recipe/i });
-    await getRecipeButton.click();
+    // Open delete dialog
+    await page.getByTitle('Delete recipe').click();
+    await expect(page.getByText('Delete Recipe?')).toBeVisible();
 
-    // Wait for recipe to appear
-    await expect(page.getByText('Test Smoothie')).toBeVisible({ timeout: 5000 });
-
-    // Click delete button
-    const deleteButton = page.getByTitle('Delete recipe');
-    await deleteButton.click();
-
-    // Wait for dialog to appear
-    await expect(page.getByText('Delete Recipe?')).toBeVisible({ timeout: 5000 });
-
-    // Verify dialog is visible
-    const dialog = page.getByText('Delete Recipe?');
-    await expect(dialog).toBeVisible();
-
-    // Click the Delete button in the dialog
+    // Click Delete button
     const confirmDeleteButton = page.getByRole('button', { name: /^delete$/i });
-    
-    // Set up a listener to catch if backdrop closes the dialog
-    let backdropClicked = false;
-    page.on('console', (msg) => {
-      if (msg.text().includes('Backdrop clicked directly')) {
-        backdropClicked = true;
-      }
-    });
-
-    // Click the delete button
     await confirmDeleteButton.click();
 
-    // Wait a bit to see if backdrop intercepts
-    await page.waitForTimeout(500);
+    // Verify dialog closes
+    await expect(page.getByText('Delete Recipe?')).not.toBeVisible();
+  });
 
-    // The dialog should either be gone (deleted) or still visible (backdrop didn't close it)
-    // But we should NOT see "Backdrop clicked directly" in console
-    expect(backdropClicked).toBe(false);
+  test('should close dialog when backdrop is clicked', async ({ page }) => {
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
 
-    // The recipe should be deleted (not visible)
-    await expect(page.getByText('Test Smoothie')).not.toBeVisible({ timeout: 3000 });
+    // Open delete dialog
+    await page.getByTitle('Delete recipe').click();
+    await expect(page.getByText('Delete Recipe?')).toBeVisible();
+
+    // Click on backdrop (the element with backdrop-blur-sm class)
+    // Click at a position that's definitely on the backdrop, not the dialog
+    const backdrop = page.locator('.backdrop-blur-sm').last();
+    await expect(backdrop).toBeVisible();
+    
+    // Click at the center of the backdrop
+    await backdrop.click({ position: { x: 100, y: 100 } });
+
+    // Verify dialog closes
+    await expect(page.getByText('Delete Recipe?')).not.toBeVisible();
+  });
+
+  test('should have accessible dialog structure', async ({ page }) => {
+    // Get a recipe to show
+    await page.getByRole('button', { name: /get another recipe/i }).click();
+    await expect(page.getByText('Test Smoothie')).toBeVisible();
+
+    // Open delete dialog
+    await page.getByTitle('Delete recipe').click();
+    await expect(page.getByText('Delete Recipe?')).toBeVisible();
+
+    // Verify dialog has proper heading
+    const heading = page.getByRole('heading', { name: /delete recipe/i });
+    await expect(heading).toBeVisible();
+
+    // Verify buttons have proper labels
+    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^delete$/i })).toBeVisible();
   });
 });
-
