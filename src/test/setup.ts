@@ -1,32 +1,9 @@
-import { expect, afterEach, vi, beforeAll, afterAll } from 'vitest';
+import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import * as matchers from '@testing-library/jest-dom/matchers';
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
-
-// Suppress act() warnings from happy-dom (it doesn't fully support act())
-// These warnings are harmless - the tests still work correctly
-const originalError = console.error;
-beforeAll(() => {
-  console.error = (...args: unknown[]) => {
-    const message = typeof args[0] === 'string' ? args[0] : '';
-    const fullMessage = args.map(arg => String(arg)).join(' ');
-    if (
-      message.includes('not configured to support act') ||
-      message.includes('An update to') && message.includes('inside a test was not wrapped in act') ||
-      fullMessage.includes('not configured to support act') ||
-      fullMessage.includes('An update to') && fullMessage.includes('inside a test was not wrapped in act')
-    ) {
-      return;
-    }
-    originalError.call(console, ...args);
-  };
-});
-
-afterAll(() => {
-  console.error = originalError;
-});
 
 // Cleanup after each test
 afterEach(() => {
@@ -111,6 +88,10 @@ vi.mock('../utils/supabase/client', async () => {
         })),
         signInWithPassword: vi.fn(),
         signUp: vi.fn(),
+        getUser: vi.fn(() => Promise.resolve({
+          data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} } },
+          error: null,
+        })),
         updateUser: vi.fn(() => Promise.resolve({
           data: { user: { id: 'test-user', email: 'test@example.com', user_metadata: {} } },
           error: null,

@@ -295,15 +295,6 @@ describe('Delete Recipe Dialog', () => {
       expect(screen.getByText('Delete Recipe?')).toBeInTheDocument();
     }, { timeout: 5000 });
 
-    // Get all direct children of body or root container
-    const rootElement = container.firstChild as HTMLElement;
-    const allChildren = Array.from(rootElement?.children || []);
-    
-    // Find delete dialog and contribute modal
-    const deleteDialogElement = Array.from(container.querySelectorAll('*')).find(el => 
-      el.textContent?.includes('Delete Recipe?')
-    );
-    
     // Delete dialog should be one of the last elements
     // Get the index of delete dialog in the DOM tree
     const allElements = Array.from(container.querySelectorAll('*'));
@@ -488,7 +479,7 @@ describe('Delete Recipe Dialog', () => {
 
   it('should remove recipe from allRecipes list after deletion', async () => {
     const user = userEvent.setup();
-    const { container } = renderApp();
+    renderApp();
 
     await waitFor(() => {
       expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();

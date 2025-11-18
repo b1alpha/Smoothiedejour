@@ -32,13 +32,13 @@ export default function App() {
   const [deletingRecipe, setDeletingRecipe] = useState<Recipe | CommunityRecipe | null>(null);
   const [justDeleted, setJustDeleted] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncError] = useState<string | null>(null);
   const [userRecipes, setUserRecipes] = useState(() => {
     const saved = localStorage.getItem('smoothie-user-recipes');
     const recipes = saved ? JSON.parse(saved) : [];
     
     // Auto-fix incomplete recipes on load (missing only instructions/ingredients)
-    const fixedRecipes = recipes.map((recipe: any) => {
+    const fixedRecipes = recipes.map((recipe: Partial<Recipe>) => {
       if (!recipe.name || !recipe.contributor) {
         // Can't auto-fix - return as-is (will be removed during sync)
         return recipe;
@@ -154,7 +154,7 @@ export default function App() {
             }
             return [...prev, created];
           });
-        } catch (error) {
+        } catch {
           // Still failed - keep it local, will retry next time
           // Don't show error immediately on page load
         }
@@ -811,7 +811,7 @@ export default function App() {
               >
                 <h2 className="text-lg font-semibold text-gray-900 mb-2">Delete Recipe?</h2>
                 <p className="text-sm text-gray-600 mb-6">
-                  Are you sure you want to delete "{deletingRecipe.name}"? This action cannot be undone.
+                  Are you sure you want to delete &quot;{deletingRecipe.name}&quot;? This action cannot be undone.
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button

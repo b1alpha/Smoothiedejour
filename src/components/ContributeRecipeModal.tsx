@@ -30,7 +30,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting, isSubmitted, submitCount },
+    formState: { errors, isSubmitting, submitCount },
     reset,
     watch,
     setValue,
@@ -53,6 +53,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedIngredients = watch('ingredients');
   const watchedEmoji = watch('emoji');
   const watchedColor = watch('color');
@@ -145,7 +146,7 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
     }
   };
 
-  const handleFormError = async (errors: any) => {
+  const handleFormError = async () => {
     // Set submitAttempted to show error summary
     setSubmitAttempted(true);
     // Trigger validation on all fields to ensure errors are populated
