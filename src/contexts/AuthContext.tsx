@@ -62,7 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       // Handle connection refused errors gracefully
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        const isLocalhost = supabaseUrl.includes('localhost');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+        const isLocalhost = supabaseUrl?.includes('localhost');
         if (isLocalhost && import.meta.env.DEV) {
           console.warn('⚠️ Local Supabase instance not running. Cannot sign in.');
           console.warn('💡 Start Supabase with: supabase start');
@@ -88,7 +89,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       // Handle connection refused errors gracefully
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        const isLocalhost = supabaseUrl.includes('localhost');
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+        const isLocalhost = supabaseUrl?.includes('localhost');
         if (isLocalhost && import.meta.env.DEV) {
           console.warn('⚠️ Local Supabase instance not running. Cannot sign up.');
           console.warn('💡 Start Supabase with: supabase start');

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Share2, Edit } from 'lucide-react';
+import { Heart, Share2, Edit, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { shareRecipe } from '../utils/share';
 
@@ -21,10 +21,12 @@ interface RecipeCardProps {
   onToggleFavorite: (id: number | string) => void;
   onContributorClick?: (contributor: string) => void;
   onEdit?: (recipe: Recipe) => void;
+  onDelete?: (recipe: Recipe) => void;
   canEdit?: boolean;
+  canDelete?: boolean;
 }
 
-export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributorClick, onEdit, canEdit }: RecipeCardProps) {
+export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributorClick, onEdit, onDelete, canEdit, canDelete }: RecipeCardProps) {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -69,19 +71,31 @@ export function RecipeCard({ recipe, isFavorite, onToggleFavorite, onContributor
         )}
       </AnimatePresence>
 
-      {/* Edit Button - Left Side */}
-      {canEdit && onEdit && (
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => onEdit(recipe)}
-          style={{ position: 'absolute', top: '1rem', left: '16px', zIndex: 10 }}
-          className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg hover:shadow-xl transition-all"
-          title="Edit recipe"
-        >
-          <Edit className="w-6 h-6 stroke-gray-600 hover:stroke-purple-600 transition-colors" />
-        </motion.button>
-      )}
+      {/* Edit and Delete Buttons - Left Side */}
+      <div style={{ position: 'absolute', top: '1rem', left: '16px', zIndex: 10 }} className="flex gap-2">
+        {canEdit && onEdit && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onEdit(recipe)}
+            className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg hover:shadow-xl transition-all"
+            title="Edit recipe"
+          >
+            <Edit className="w-6 h-6 stroke-gray-600 hover:stroke-purple-600 transition-colors" />
+          </motion.button>
+        )}
+        {canDelete && onDelete && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => onDelete(recipe)}
+            className="bg-white/90 backdrop-blur-sm rounded-full p-4 shadow-lg hover:shadow-xl transition-all"
+            title="Delete recipe"
+          >
+            <Trash2 className="w-6 h-6 stroke-gray-600 hover:stroke-red-600 transition-colors" />
+          </motion.button>
+        )}
+      </div>
 
       {/* Action Buttons - Right Side */}
       <div className="absolute top-4 right-4 z-10 flex gap-2">

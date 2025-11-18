@@ -68,8 +68,22 @@ app.get('/recipes', async (c) => {
 app.post('/recipes', async (c) => {
   try {
     const recipe = await c.req.json();
-    if (!recipe.name || !recipe.contributor || !recipe.ingredients || !recipe.instructions) {
-      return c.json({ error: 'Missing required fields' }, 400);
+    
+    // Validate required fields with detailed error message
+    const missingFields: string[] = [];
+    if (!recipe.name) missingFields.push('name');
+    if (!recipe.contributor) missingFields.push('contributor');
+    if (!recipe.ingredients) missingFields.push('ingredients');
+    if (!recipe.instructions) missingFields.push('instructions');
+    
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+      console.error('Received recipe:', JSON.stringify(recipe, null, 2));
+      return c.json({ 
+        error: 'Missing required fields',
+        missingFields,
+        received: Object.keys(recipe)
+      }, 400);
     }
 
     const recipeId = `recipe:${Date.now()}:${Math.random().toString(36).substring(7)}`;
@@ -93,6 +107,34 @@ app.post('/recipes', async (c) => {
   } catch (error) {
     console.error('Error creating recipe:', error);
     return c.json({ error: 'Failed to create recipe' }, 500);
+  }
+});
+
+// Delete a recipe at /recipes/:id
+app.delete('/recipes/:id', async (c) => {
+  try {
+    const recipeId = decodeURIComponent(c.req.param('id'));
+    console.log('Delete request for recipeId:', recipeId);
+    
+    // Check if recipe exists
+    const existingRecipe = await kv.get(recipeId);
+    if (!existingRecipe) {
+      console.log('Recipe not found:', recipeId);
+      return c.json({ error: 'Recipe not found' }, 404);
+    }
+
+    console.log('Deleting recipe from KV store:', recipeId);
+    await kv.del(recipeId);
+    console.log('Successfully deleted recipe:', recipeId);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting recipe:', error);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
+    return c.json({ 
+      error: 'Failed to delete recipe',
+      details: error instanceof Error ? error.message : String(error)
+    }, 500);
   }
 });
 

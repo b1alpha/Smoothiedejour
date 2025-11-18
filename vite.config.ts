@@ -10,6 +10,10 @@
       environment: 'happy-dom',
       setupFiles: './src/test/setup.ts',
       css: true,
+      env: {
+        IS_REACT_ACT_ENVIRONMENT: 'true',
+      },
+      exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/*.e2e.*', '**/*.spec.ts'],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'json', 'html'],

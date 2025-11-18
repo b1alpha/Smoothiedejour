@@ -97,4 +97,16 @@ export async function updateCommunityRecipe(
   return json.recipe;
 }
 
+export async function deleteCommunityRecipe(recipeId: string): Promise<void> {
+  const encodedRecipeId = encodeURIComponent(recipeId);
+  const res = await fetch(`${baseUrl}/${encodedRecipeId}`, {
+    method: 'DELETE',
+    headers: defaultHeaders,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to delete recipe: ${res.status} ${text}`);
+  }
+}
+
 

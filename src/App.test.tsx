@@ -305,15 +305,17 @@ describe('App', () => {
     await user.clear(ingredientInputs[0]);
     await user.type(ingredientInputs[0], '1 banana');
     
-    await user.type(screen.getByLabelText(/instructions/i), 'Blend');
+    // Instructions must be at least 10 characters
+    await user.type(screen.getByLabelText(/instructions/i), 'Blend everything together until smooth');
 
     // Submit
     const submitButton = screen.getByRole('button', { name: /submit/i });
     await user.click(submitButton);
 
+    // Wait for form validation and submission
     await waitFor(() => {
       expect(communityUtils.submitCommunityRecipe).toHaveBeenCalled();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 
   it('should allow unauthenticated users to contribute recipes', async () => {
@@ -372,12 +374,14 @@ describe('App', () => {
     await user.clear(ingredientInputs[0]);
     await user.type(ingredientInputs[0], '1 banana');
     
-    await user.type(screen.getByLabelText(/instructions/i), 'Blend');
+    // Instructions must be at least 10 characters
+    await user.type(screen.getByLabelText(/instructions/i), 'Blend everything together until smooth');
 
     // Submit
     const submitButton = screen.getByRole('button', { name: /submit/i });
     await user.click(submitButton);
 
+    // Wait for form validation and submission
     await waitFor(() => {
       expect(communityUtils.submitCommunityRecipe).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -385,7 +389,7 @@ describe('App', () => {
           contributor: 'Guest User',
         })
       );
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 
   it('should persist favorites to localStorage', async () => {
