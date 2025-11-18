@@ -20,6 +20,7 @@ export default function App() {
   const [currentRecipe, setCurrentRecipe] = useState<Recipe | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [shakeCount, setShakeCount] = useState(0);
+  const [motionPermissionGranted, setMotionPermissionGranted] = useState(false);
   const [noFat, setNoFat] = useState(false);
   const [noNuts, setNoNuts] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -414,6 +415,9 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Only set up motion listener if permission is already granted
+    if (!motionPermissionGranted) return;
+
     let lastShakeTime = 0;
     const SHAKE_THRESHOLD = 15;
     const SHAKE_DELAY = 500;
@@ -439,28 +443,36 @@ export default function App() {
       }
     };
 
-    // Request permission for iOS 13+ devices
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (DeviceMotionEvent as any).requestPermission()
-        .then((permissionState: string) => {
-          if (permissionState === 'granted') {
-            window.addEventListener('devicemotion', handleMotion);
-          }
-        })
-        .catch(console.error);
-    } else {
-      window.addEventListener('devicemotion', handleMotion);
-    }
+    // Add listener when permission is granted (works for both iOS and non-iOS)
+    window.addEventListener('devicemotion', handleMotion);
 
     return () => {
       window.removeEventListener('devicemotion', handleMotion);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [noFat, noNuts, favoritesOnly, favorites, allRecipes]);
+  }, [motionPermissionGranted, noFat, noNuts, favoritesOnly, favorites, allRecipes]);
 
-  const handleManualShake = () => {
+  const handleManualShake = async () => {
+    // Request permission for iOS 13+ devices when user clicks the button
+    const DeviceMotionEventWithPermission = DeviceMotionEvent as typeof DeviceMotionEvent & {
+      requestPermission?: () => Promise<PermissionState>;
+    };
+
+    if (typeof DeviceMotionEventWithPermission.requestPermission === 'function' && !motionPermissionGranted) {
+      try {
+        const permissionState = await DeviceMotionEventWithPermission.requestPermission();
+        if (permissionState === 'granted') {
+          setMotionPermissionGranted(true);
+        }
+      } catch (error) {
+        console.error('Error requesting motion permission:', error);
+      }
+    } else if (typeof DeviceMotionEventWithPermission.requestPermission !== 'function') {
+      // For non-iOS devices, permission is not needed, so mark as granted
+      setMotionPermissionGranted(true);
+    }
+
+    // Always trigger the manual shake action regardless of permission
     setIsShaking(true);
     setTimeout(() => {
       const recipe = getRandomRecipe();
