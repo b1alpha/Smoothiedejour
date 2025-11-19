@@ -22,11 +22,14 @@ export const recipeSchema = z.object({
     .regex(/^#[0-9A-Fa-f]{6}$/, 'Please select a valid color'),
   
   ingredients: z
-    .array(z.string().trim().min(1, 'Ingredient cannot be empty'))
-    .min(1, 'At least one ingredient is required')
+    .array(z.string().trim())
     .refine(
-      (ingredients) => ingredients.every(ing => ing.trim().length > 0),
-      { message: 'All ingredients must have content' }
+      (ingredients) => {
+        // Filter out empty/whitespace-only ingredients and check if at least one remains
+        const nonEmptyIngredients = ingredients.filter(ing => ing.trim().length > 0);
+        return nonEmptyIngredients.length > 0;
+      },
+      { message: 'At least one ingredient is required' }
     ),
   
   instructions: z

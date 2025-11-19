@@ -89,12 +89,17 @@ describe('recipeSchema', () => {
       expect(() => recipeSchema.parse({ ...validRecipe, ingredients: [] })).toThrow('At least one ingredient is required');
     });
 
-    it('should reject ingredients with empty strings', () => {
-      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: [''] })).toThrow('Ingredient cannot be empty');
+    it('should reject ingredients with only empty strings', () => {
+      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: [''] })).toThrow('At least one ingredient is required');
     });
 
     it('should reject ingredients with only whitespace', () => {
-      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: ['   '] })).toThrow('All ingredients must have content');
+      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: ['   '] })).toThrow('At least one ingredient is required');
+    });
+
+    it('should accept ingredients with empty strings if there is at least one non-empty ingredient', () => {
+      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: ['1 banana', ''] })).not.toThrow();
+      expect(() => recipeSchema.parse({ ...validRecipe, ingredients: ['1 banana', '', '   '] })).not.toThrow();
     });
 
     it('should trim ingredient whitespace', () => {
