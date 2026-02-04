@@ -22,7 +22,26 @@ export function parseIngredients(input: string): string[] {
 
   if (hasNewlines) {
     // Split by newlines first
-    ingredients = text.split('\n');
+    const lines = text.split('\n');
+
+    // Process each line - some lines might contain multiple ingredients
+    ingredients = [];
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // Check if this line contains multiple parenthetical ingredients
+      const parentheticalPattern = /\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/g;
+      if (parentheticalPattern.test(trimmedLine)) {
+        // Split this line into multiple ingredients
+        const subIngredients = trimmedLine.split(/\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/).map((ing, idx, arr) => {
+          return idx < arr.length - 1 ? ing + ')' : ing;
+        });
+        ingredients.push(...subIngredients);
+      } else {
+        ingredients.push(trimmedLine);
+      }
+    }
   } else {
     // Check for pattern: ingredients with parenthetical descriptions followed by quantities
     // e.g., "1 cup berries (for flavor) 2 tbsp honey (for sweetness) 1 banana"
@@ -39,26 +58,30 @@ export function parseIngredients(input: string): string[] {
     } else {
       // If no newlines, try comma separation (but only for clearly comma-separated lists)
       // Don't split if commas appear to be part of ingredient descriptions
-      // e.g., "1 cup milk, cold" should not be split
-      const commaCount = (text.match(/,/g) || []).length;
+      // e.g., "1 cup milk, cold" or "1 cup milk, cold, organic" should NOT be split
 
-      // Only treat as comma-separated list if:
-      // 1. Has 2+ commas (clearly a list), OR
-      // 2. Has 1 comma AND both parts look like complete ingredients (have quantities/measurements)
-      let seemsLikeList = false;
+      // Split by commas, but treat this as a list only if most segments look like
+      // complete ingredients (have their own quantity/measurement at the start)
+      const parts = text.split(',').map(p => p.trim()).filter(p => p.length > 0);
 
-      if (commaCount >= 2) {
-        seemsLikeList = true;
-      } else if (commaCount === 1) {
-        const parts = text.split(',').map(p => p.trim());
-        // Check if both parts look like ingredients (start with a number or have measurement words)
-        const measurementPattern = /^[\d½¼¾⅓⅔⅛]+|cup|tbsp|tsp|oz|lb|gram|ml|liter|bunch|clove|piece|slice|can|bottle|package/i;
-        const bothLookLikeIngredients = parts.every(part => measurementPattern.test(part));
-        seemsLikeList = bothLookLikeIngredients;
-      }
+      if (parts.length >= 2) {
+        // Pattern to detect if a segment starts with a quantity (number, fraction, or measurement word)
+        // This indicates it's a complete ingredient, not a modifier like "cold" or "organic"
+        const startsWithQuantityPattern = /^[\d½¼¾⅓⅔⅛]+\s|^(a|an|one|two|three|four|five|some|few|several|handful|pinch|dash|splash)\s/i;
 
-      if (seemsLikeList) {
-        ingredients = text.split(',');
+        // Count how many segments look like complete ingredients (start with quantity)
+        const segmentsWithQuantity = parts.filter(part => startsWithQuantityPattern.test(part)).length;
+
+        // Only treat as a comma-separated list if:
+        // - At least 2 segments have quantities, AND
+        // - Most segments (> 50%) have quantities (to avoid "1 cup milk, cold, 2 tbsp honey" splitting wrong)
+        const seemsLikeList = segmentsWithQuantity >= 2 && segmentsWithQuantity >= parts.length / 2;
+        
+        if (seemsLikeList) {
+          ingredients = parts;
+        } else {
+          ingredients = [text];
+        }
       } else {
         ingredients = [text];
       }
@@ -84,8 +107,9 @@ export function parseIngredients(input: string): string[] {
     return cleaned.trim();
   });
 
-  // Filter out empty strings
-  ingredients = ingredients.filter(ing => ing.length > 0);
+  // Filter out empty strings and common header words
+  const headerPatterns = /^(ingredients?|instructions?|directions?|steps?|method|recipe|serves?|yield|prep|cook|total|time|notes?):?\s*$/i;
+  ingredients = ingredients.filter(ing => ing.length > 0 && !headerPatterns.test(ing));
 
   return ingredients;
 }

@@ -166,7 +166,7 @@ describe('parseIngredients', () => {
   });
 
   describe('comma-separated ingredients', () => {
-    it('should split by commas when no newlines present', () => {
+    it('should split by commas when each segment has a quantity', () => {
       const input = '1 banana, 1 cup milk, 2 tbsp honey';
       expect(parseIngredients(input)).toEqual([
         '1 banana',
@@ -181,12 +181,65 @@ describe('parseIngredients', () => {
       expect(parseIngredients(input)).toEqual(['1 cup milk, cold']);
     });
 
+    it('should not split single ingredient with multiple comma modifiers', () => {
+      // "1 cup milk, cold, organic" should stay as one ingredient
+      const input = '1 cup milk, cold, organic';
+      expect(parseIngredients(input)).toEqual(['1 cup milk, cold, organic']);
+    });
+
+    it('should not split single ingredient with parenthetical commas', () => {
+      // Commas inside parentheses are descriptive
+      const input = '1 cup milk (cold, whole, organic)';
+      expect(parseIngredients(input)).toEqual(['1 cup milk (cold, whole, organic)']);
+    });
+
+    it('should not split when only first segment has quantity', () => {
+      // "1 banana, ripe, sliced" - only first segment has quantity
+      const input = '1 banana, ripe, sliced';
+      expect(parseIngredients(input)).toEqual(['1 banana, ripe, sliced']);
+    });
+
+    it('should split when most segments have quantities', () => {
+      const input = '1 banana, 2 cups milk';
+      expect(parseIngredients(input)).toEqual([
+        '1 banana',
+        '2 cups milk',
+      ]);
+    });
+
+    it('should handle mixed quantity and modifier segments intelligently', () => {
+      // Here 2 out of 3 segments have quantities (>50%), so it should split
+      const input = '1 banana, 1 cup milk, honey';
+      expect(parseIngredients(input)).toEqual([
+        '1 banana',
+        '1 cup milk',
+        'honey',
+      ]);
+    });
+
     it('should prefer newlines over commas when both present', () => {
       const input = `1 banana, ripe
 1 cup milk, cold`;
       expect(parseIngredients(input)).toEqual([
         '1 banana, ripe',
         '1 cup milk, cold',
+      ]);
+    });
+
+    it('should handle fraction quantities', () => {
+      const input = '½ cup oats, ¼ cup honey';
+      expect(parseIngredients(input)).toEqual([
+        '½ cup oats',
+        '¼ cup honey',
+      ]);
+    });
+
+    it('should handle word quantities like "a" and "some"', () => {
+      const input = 'a banana, some berries, a handful of nuts';
+      expect(parseIngredients(input)).toEqual([
+        'a banana',
+        'some berries',
+        'a handful of nuts',
       ]);
     });
   });
@@ -216,12 +269,35 @@ describe('parseIngredients', () => {
       expect(result[1]).toBe('2 cups milk (cold)');
     });
 
+    it('should handle "1 or 2" quantity format', () => {
+      const input = '1 banana (ripe) 1 or 2 cups milk (cold)';
+      const result = parseIngredients(input);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe('1 banana (ripe)');
+      expect(result[1]).toBe('1 or 2 cups milk (cold)');
+    });
+
     it('should not split when there is only one ingredient with parentheses', () => {
       const input = '1 cup milk (preferably whole)';
       const result = parseIngredients(input);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toBe('1 cup milk (preferably whole)');
+    });
+
+    it('should handle pasted content with header and bullet on separate lines', () => {
+      const input = `Ingredients
+•
+1 cup frozen blueberries (or mixed berries – loaded with anthocyanin antioxidants that support memory and protect brain cells) ½ ripe avocado (provides healthy monounsaturated fats that improve blood flow to the brain and reduce inflammation) 1 small ripe banana (adds natural sweetness, potassium, vitamin B6, and dopamine-supporting compounds for attention and mood) 1–2 handfuls fresh spinach or kale (rich in folate, vitamin K, lutein, and antioxidants linked to slower cognitive decline) 1 tablespoon chia seeds or ground flaxseeds (great source of plant-based omega-3s for brain cell health and anti-inflammatory effects) 1 tablespoon almond butter or walnuts (healthy fats + a bit of protein for sustained energy and neurotransmitter support) 1 cup unsweetened almond milk, oat milk, or coconut water (for blending; coconut water adds natural electrolytes)`;
+
+      const result = parseIngredients(input);
+
+      // Should filter out "Ingredients" header and empty bullet, then split the long line
+      expect(result).toHaveLength(7);
+      expect(result[0]).toBe('1 cup frozen blueberries (or mixed berries – loaded with anthocyanin antioxidants that support memory and protect brain cells)');
+      expect(result[1]).toBe('½ ripe avocado (provides healthy monounsaturated fats that improve blood flow to the brain and reduce inflammation)');
+      expect(result[6]).toBe('1 cup unsweetened almond milk, oat milk, or coconut water (for blending; coconut water adds natural electrolytes)');
     });
   });
 
@@ -267,8 +343,8 @@ describe('isMultiIngredientPaste', () => {
     expect(isMultiIngredientPaste('1 banana\n1 cup milk')).toBe(true);
   });
 
-  it('should return true for comma-separated list', () => {
-    expect(isMultiIngredientPaste('1 banana, 1 cup milk, honey')).toBe(true);
+  it('should return true for comma-separated list with quantities', () => {
+    expect(isMultiIngredientPaste('1 banana, 1 cup milk, 2 tbsp honey')).toBe(true);
   });
 
   it('should return false for single ingredient', () => {
@@ -281,5 +357,13 @@ describe('isMultiIngredientPaste', () => {
 
   it('should return false for ingredient with descriptive comma', () => {
     expect(isMultiIngredientPaste('1 cup milk, cold')).toBe(false);
+  });
+
+  it('should return false for ingredient with multiple descriptive commas', () => {
+    expect(isMultiIngredientPaste('1 cup milk, cold, organic')).toBe(false);
+  });
+
+  it('should return false for ingredient with parenthetical commas', () => {
+    expect(isMultiIngredientPaste('1 cup milk (cold, whole, organic)')).toBe(false);
   });
 });

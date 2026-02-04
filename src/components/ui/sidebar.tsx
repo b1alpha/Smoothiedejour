@@ -599,6 +599,13 @@ function SidebarMenuBadge({
   );
 }
 
+// Generate random width value outside component to avoid impure function during render
+let skeletonWidthSeed = 0;
+function getNextSkeletonWidth(): string {
+  skeletonWidthSeed = (skeletonWidthSeed + 1) % 40;
+  return `${skeletonWidthSeed + 50}%`;
+}
+
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
@@ -607,9 +614,8 @@ function SidebarMenuSkeleton({
   showIcon?: boolean;
 }) {
   // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+  // Use state with lazy initialization to store a stable width value per component instance
+  const width = React.useState(() => getNextSkeletonWidth())[0];
 
   return (
     <div
