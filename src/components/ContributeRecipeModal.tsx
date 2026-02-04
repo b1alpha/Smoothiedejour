@@ -11,6 +11,7 @@ import { Switch } from './ui/switch';
 import { useAuth } from '../contexts/AuthContext';
 import type { CommunityRecipe } from '../utils/supabase/community';
 import { recipeSchema, type RecipeFormData } from '../utils/validation/recipeSchema';
+import { parseIngredients, isMultiIngredientPaste } from '../utils/parseIngredients';
 
 interface ContributeRecipeModalProps {
   isOpen: boolean;
@@ -104,6 +105,26 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
     const current = watchedIngredients || [''];
     if (current.length > 1) {
       setValue('ingredients', current.filter((_, i) => i !== index), { shouldValidate: true });
+    }
+  };
+
+  // Handle paste event to split multi-ingredient pastes into separate fields
+  const handleIngredientPaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    
+    if (isMultiIngredientPaste(pastedText)) {
+      e.preventDefault();
+      
+      const parsedIngredients = parseIngredients(pastedText);
+      const current = watchedIngredients || [''];
+      
+      // Replace the current field and add new fields for remaining ingredients
+      const before = current.slice(0, index);
+      const after = current.slice(index + 1).filter(ing => ing.trim() !== '');
+      
+      const newIngredients = [...before, ...parsedIngredients, ...after];
+      
+      setValue('ingredients', newIngredients, { shouldValidate: false });
     }
   };
 
@@ -392,9 +413,10 @@ export function ContributeRecipeModal({ isOpen, onClose, onSubmit, editingRecipe
                       <div className="flex-1">
                         <Input
                           {...register(`ingredients.${index}` as const)}
-                          placeholder="e.g., 1 cup frozen mango"
+                          placeholder="e.g., 1 cup frozen mango (paste a list to add multiple)"
                           aria-invalid={errors.ingredients ? 'true' : 'false'}
                           className={errors.ingredients && index === 0 ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
+                          onPaste={(e) => handleIngredientPaste(index, e)}
                         />
                       </div>
                       {watchedIngredients.length > 1 && (

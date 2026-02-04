@@ -25,7 +25,7 @@ app.put('/recipes/:id', async (c) => {
     }
 
     // Check if recipe exists
-    const existingRecipe = await kv.get(recipeId);
+    const existingRecipe = await kv.get(recipeId) as Record<string, unknown> | null;
     if (!existingRecipe) {
       return c.json({ error: 'Recipe not found' }, 404);
     }
@@ -56,7 +56,7 @@ app.put('/recipes/:id', async (c) => {
 // List community recipes at /recipes
 app.get('/recipes', async (c) => {
   try {
-    const recipes = await kv.getByPrefix('recipe:');
+    const recipes = await kv.getByPrefix('recipe:') as unknown[];
     return c.json({ recipes: recipes || [] });
   } catch (error) {
     console.error('Error fetching recipes:', error);
@@ -117,7 +117,7 @@ app.delete('/recipes/:id', async (c) => {
     console.log('Delete request for recipeId:', recipeId);
     
     // Check if recipe exists
-    const existingRecipe = await kv.get(recipeId);
+    const existingRecipe = await kv.get(recipeId) as Record<string, unknown> | null;
     if (!existingRecipe) {
       console.log('Recipe not found:', recipeId);
       return c.json({ error: 'Recipe not found' }, 404);

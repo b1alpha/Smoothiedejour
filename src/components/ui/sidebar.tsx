@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 "use client";
 
 import * as React from "react";
@@ -599,6 +600,8 @@ function SidebarMenuBadge({
   );
 }
 
+import { getNextSkeletonWidth } from "./get-next-skeleton-width";
+
 function SidebarMenuSkeleton({
   className,
   showIcon = false,
@@ -607,9 +610,8 @@ function SidebarMenuSkeleton({
   showIcon?: boolean;
 }) {
   // Random width between 50 to 90%.
-  const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
-  }, []);
+  // Use state with lazy initialization to store a stable width value per component instance
+  const width = React.useState(() => getNextSkeletonWidth())[0];
 
   return (
     <div

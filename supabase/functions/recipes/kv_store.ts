@@ -16,7 +16,7 @@ const client = () => createClient(
   Deno.env.get("SERVICE_ROLE_KEY"),
 );
 
-export const set = async (key: string, value: any): Promise<void> => {
+export const set = async (key: string, value: unknown): Promise<void> => {
   const supabase = client()
   const { error } = await supabase.from("kv_store_9f7fc7bb").upsert({
     key,
@@ -27,7 +27,7 @@ export const set = async (key: string, value: any): Promise<void> => {
   }
 };
 
-export const get = async (key: string): Promise<any> => {
+export const get = async (key: string): Promise<unknown> => {
   const supabase = client()
   const { data, error } = await supabase.from("kv_store_9f7fc7bb").select("value").eq("key", key).maybeSingle();
   if (error) {
@@ -44,7 +44,7 @@ export const del = async (key: string): Promise<void> => {
   }
 };
 
-export const mset = async (keys: string[], values: any[]): Promise<void> => {
+export const mset = async (keys: string[], values: unknown[]): Promise<void> => {
   const supabase = client()
   const { error } = await supabase.from("kv_store_9f7fc7bb").upsert(keys.map((k, i) => ({ key: k, value: values[i] })));
   if (error) {
@@ -52,7 +52,7 @@ export const mset = async (keys: string[], values: any[]): Promise<void> => {
   }
 };
 
-export const mget = async (keys: string[]): Promise<any[]> => {
+export const mget = async (keys: string[]): Promise<unknown[]> => {
   const supabase = client()
   const { data, error } = await supabase.from("kv_store_9f7fc7bb").select("value").in("key", keys);
   if (error) {
@@ -69,7 +69,7 @@ export const mdel = async (keys: string[]): Promise<void> => {
   }
 };
 
-export const getByPrefix = async (prefix: string): Promise<any[]> => {
+export const getByPrefix = async (prefix: string): Promise<unknown[]> => {
   const supabase = client()
   const { data, error } = await supabase.from("kv_store_9f7fc7bb").select("key, value").like("key", prefix + "%");
   if (error) {

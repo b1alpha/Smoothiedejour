@@ -66,6 +66,7 @@
     "@vitejs/plugin-react-swc": "^3.10.2",
     "@vitest/coverage-v8": "^4.0.8",
     "@vitest/ui": "^4.0.8",
+    "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9.39.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -80,8 +81,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "lint:fix": "eslint . --fix",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
