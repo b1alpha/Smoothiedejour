@@ -75,7 +75,7 @@ describe('App', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
   });
 
