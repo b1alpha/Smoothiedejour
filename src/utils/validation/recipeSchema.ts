@@ -1,17 +1,20 @@
 import { z } from 'zod';
 
+// Helper to create a trimmed string with min/max validation
+// Trims BEFORE validation so whitespace-only strings are rejected
+const trimmedString = (minLength: number, maxLength: number, minMessage: string, maxMessage: string) =>
+  z.string()
+    .transform((val) => val.trim())
+    .pipe(
+      z.string()
+        .min(minLength, minMessage)
+        .max(maxLength, maxMessage)
+    );
+
 export const recipeSchema = z.object({
-  name: z
-    .string()
-    .min(1, 'Recipe name is required')
-    .max(100, 'Recipe name must be 100 characters or less')
-    .trim(),
+  name: trimmedString(1, 100, 'Recipe name is required', 'Recipe name must be 100 characters or less'),
   
-  contributor: z
-    .string()
-    .min(1, 'Contributor name is required')
-    .max(50, 'Contributor name must be 50 characters or less')
-    .trim(),
+  contributor: trimmedString(1, 50, 'Contributor name is required', 'Contributor name must be 50 characters or less'),
   
   emoji: z
     .string()
@@ -34,12 +37,12 @@ export const recipeSchema = z.object({
   
   instructions: z
     .string()
-    .min(1, 'Instructions are required')
-    .refine((val) => val.trim().length >= 10, {
-      message: 'Instructions must be at least 10 characters',
-    })
-    .max(2000, 'Instructions must be 2000 characters or less')
-    .trim(),
+    .transform((val) => val.trim())
+    .pipe(
+      z.string()
+        .min(10, 'Instructions must be at least 10 characters')
+        .max(2000, 'Instructions must be 2000 characters or less')
+    ),
   
   servings: z
     .string()
@@ -51,11 +54,7 @@ export const recipeSchema = z.object({
       { message: 'Servings must be a number between 1 and 100' }
     ),
   
-  prepTime: z
-    .string()
-    .min(1, 'Prep time is required')
-    .max(50, 'Prep time must be 50 characters or less')
-    .trim(),
+  prepTime: trimmedString(1, 50, 'Prep time is required', 'Prep time must be 50 characters or less'),
   
   containsFat: z.boolean(),
   containsNuts: z.boolean(),

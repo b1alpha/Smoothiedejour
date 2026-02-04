@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, ArrowLeft, User } from 'lucide-react';
 import { RecipeCard } from './components/RecipeCard';
@@ -66,6 +66,7 @@ export default function App() {
   const [communityRecipes, setCommunityRecipes] = useState<CommunityRecipe[]>([]);
   const [communityRecipesLoadFailed, setCommunityRecipesLoadFailed] = useState(false);
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
+  const unseenQueueRef = useRef<(number | string)[]>([]);
 
   // Combine recipes: only include defaults if community recipes failed to load (no network)
   // Otherwise, show community recipes + user recipes
@@ -410,17 +411,31 @@ export default function App() {
   const getRandomRecipe = () => {
     const filteredRecipes = getFilteredRecipes();
     if (filteredRecipes.length === 0) return null;
-    const randomIndex = Math.floor(Math.random() * filteredRecipes.length);
-    return filteredRecipes[randomIndex];
+
+    // If queue is empty, refill with all filtered recipe IDs
+    if (unseenQueueRef.current.length === 0) {
+      unseenQueueRef.current = filteredRecipes.map(r => r.id);
+    }
+
+    // Pop a random ID from the queue
+    const randomIndex = Math.floor(Math.random() * unseenQueueRef.current.length);
+    const selectedId = unseenQueueRef.current.splice(randomIndex, 1)[0];
+    
+    return filteredRecipes.find(r => r.id === selectedId) || null;
   };
+
+  // Reset queue when filters or recipe list changes
+  useEffect(() => {
+    unseenQueueRef.current = [];
+  }, [noFat, noNuts, favoritesOnly, allRecipes]);
 
   useEffect(() => {
     // Only set up motion listener if permission is already granted
     if (!motionPermissionGranted) return;
 
     let lastShakeTime = 0;
-    const SHAKE_THRESHOLD = 15;
-    const SHAKE_DELAY = 500;
+    const SHAKE_THRESHOLD = 22;
+    const SHAKE_DELAY = 600;
 
     const handleMotion = (event: DeviceMotionEvent) => {
       const acceleration = event.accelerationIncludingGravity;
