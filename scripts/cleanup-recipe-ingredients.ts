@@ -4,24 +4,25 @@
  * 
  * Usage:
  *   # Option 1: Set environment variables directly
- *   SUPABASE_URL=your_url SERVICE_ROLE_KEY=your_key node scripts/cleanup-recipe-ingredients.mjs
+ *   SUPABASE_URL=your_url SERVICE_ROLE_KEY=your_key npx tsx scripts/cleanup-recipe-ingredients.ts
  * 
- *   # Option 2: Add to .env.local and run with npm
+ *   # Option 2: Add SERVICE_ROLE_KEY to .env.local and run:
  *   npm run cleanup:ingredients
  * 
  * To get SERVICE_ROLE_KEY:
  *   1. Go to https://supabase.com/dashboard
- *   2. Select your project
+ *   2. Select your project (vbzmelpvugyixagfiftu)
  *   3. Go to Settings → API
  *   4. Copy the "service_role" key (NOT the anon key - this has admin privileges)
  *   5. Add to .env.local: SERVICE_ROLE_KEY=your-service-role-key
  */
 
-// Try to load .env.local if it exists
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { parseIngredients } from '../src/utils/parseIngredients.ts';
 
+// Try to load .env.local if it exists
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -41,80 +42,8 @@ try {
       }
     }
   });
-} catch (e) {
+} catch {
   // .env.local doesn't exist or can't be read, that's okay
-}
-
-// Copy of parseIngredients function (simplified for Node.js)
-function parseIngredients(input) {
-  if (!input || typeof input !== 'string') {
-    return [];
-  }
-
-  const text = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const hasNewlines = text.includes('\n');
-
-  let ingredients;
-
-  if (hasNewlines) {
-    const lines = text.split('\n');
-    ingredients = [];
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) continue;
-
-      const parentheticalPattern = /\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/g;
-      if (parentheticalPattern.test(trimmedLine)) {
-        const subIngredients = trimmedLine.split(/\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/).map((ing, idx, arr) => {
-          return idx < arr.length - 1 ? ing + ')' : ing;
-        });
-        ingredients.push(...subIngredients);
-      } else {
-        ingredients.push(trimmedLine);
-      }
-    }
-  } else {
-    const parentheticalPattern = /\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/g;
-    const hasParentheticalSeparators = parentheticalPattern.test(text);
-
-    if (hasParentheticalSeparators) {
-      ingredients = text.split(/\)\s+(?=[\d½¼¾⅓⅔⅛]+[\s–-])/).map((ing, idx, arr) => {
-        return idx < arr.length - 1 ? ing + ')' : ing;
-      });
-    } else {
-      const parts = text.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      
-      if (parts.length >= 2) {
-        const startsWithQuantityPattern = /^[\d½¼¾⅓⅔⅛]+\s|^(a|an|one|two|three|four|five|some|few|several|handful|pinch|dash|splash)\s/i;
-        const segmentsWithQuantity = parts.filter(part => startsWithQuantityPattern.test(part)).length;
-        const seemsLikeList = segmentsWithQuantity >= 2 && segmentsWithQuantity >= parts.length / 2;
-        
-        if (seemsLikeList) {
-          ingredients = parts;
-        } else {
-          ingredients = [text];
-        }
-      } else {
-        ingredients = [text];
-      }
-    }
-  }
-
-  // Clean up each ingredient
-  ingredients = ingredients.map(ingredient => {
-    let cleaned = ingredient.trim();
-    cleaned = cleaned.replace(/^[•\-*·▪▸►➤○●]\s*/, '');
-    cleaned = cleaned.replace(/^\d+[.):\]]\s*/, '');
-    cleaned = cleaned.replace(/^\(\d+\)\s*/, '');
-    cleaned = cleaned.replace(/^\[[ x]?\]\s*/i, '');
-    cleaned = cleaned.replace(/^[☐☑✓✔]\s*/, '');
-    return cleaned.trim();
-  });
-
-  const headerPatterns = /^(ingredients?|instructions?|directions?|steps?|method|recipe|serves?|yield|prep|cook|total|time|notes?):?\s*$/i;
-  ingredients = ingredients.filter(ing => ing.length > 0 && !headerPatterns.test(ing));
-
-  return ingredients;
 }
 
 async function cleanupRecipes() {
@@ -152,7 +81,7 @@ async function cleanupRecipes() {
     console.error("  VITE_SUPABASE_ANON_KEY=your-anon-key");
     console.error("  SERVICE_ROLE_KEY=your-service-role-key-here");
     console.error("\nOr set directly:");
-    console.error("  SUPABASE_URL=https://vbzmelpvugyixagfiftu.supabase.co SERVICE_ROLE_KEY=your_key node scripts/cleanup-recipe-ingredients.mjs");
+    console.error("  SUPABASE_URL=https://vbzmelpvugyixagfiftu.supabase.co SERVICE_ROLE_KEY=your_key npx tsx scripts/cleanup-recipe-ingredients.ts");
     process.exit(1);
   }
 
@@ -177,7 +106,7 @@ async function cleanupRecipes() {
 
     let fixedCount = 0;
     let skippedCount = 0;
-    const fixedRecipes = [];
+    const fixedRecipes: Array<{ id: string; name: string; before: string[]; after: string[] }> = [];
 
     for (const recipe of recipes) {
       // Check if ingredients array has only 1 element
