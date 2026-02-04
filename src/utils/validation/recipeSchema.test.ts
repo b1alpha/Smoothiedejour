@@ -24,14 +24,9 @@ describe('recipeSchema', () => {
       expect(() => recipeSchema.parse({ ...validRecipe, name: '' })).toThrow('Recipe name is required');
     });
 
-    it('should handle whitespace-only name', () => {
-      // Note: With current schema order (.min().trim()), whitespace passes min(1) then gets trimmed
-      // This test verifies current behavior - if schema is fixed to .trim().min(), this should fail
-      const result = recipeSchema.safeParse({ ...validRecipe, name: '   ' });
-      // Current behavior: passes validation, gets trimmed to empty string in output
-      if (result.success) {
-        expect(result.data.name).toBe('');
-      }
+    it('should reject whitespace-only name', () => {
+      // Trims before validation, so whitespace-only strings are rejected
+      expect(() => recipeSchema.parse({ ...validRecipe, name: '   ' })).toThrow('Recipe name is required');
     });
 
     it('should reject name longer than 100 characters', () => {
@@ -114,7 +109,7 @@ describe('recipeSchema', () => {
     });
 
     it('should reject empty instructions', () => {
-      expect(() => recipeSchema.parse({ ...validRecipe, instructions: '' })).toThrow('Instructions are required');
+      expect(() => recipeSchema.parse({ ...validRecipe, instructions: '' })).toThrow('Instructions must be at least 10 characters');
     });
 
     it('should reject instructions shorter than 10 characters', () => {
