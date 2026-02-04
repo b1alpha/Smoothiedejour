@@ -15,12 +15,19 @@ export function parseIngredients(input: string): string[] {
   // Normalize line endings
   const text = input.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
+  // Check for tab-separated bullet points (e.g., "ingredient1 \t•\t ingredient2")
+  const hasTabBullets = /\t[•\-*·▪▸►➤○●]\t/.test(text);
+  
   // Check if input has multiple lines
   const hasNewlines = text.includes('\n');
 
   let ingredients: string[];
 
-  if (hasNewlines) {
+  // Handle tab-separated bullet points first (e.g., "ingredient1 \t•\t ingredient2")
+  if (hasTabBullets) {
+    // Split on tab + bullet + tab pattern
+    ingredients = text.split(/\t[•\-*·▪▸►➤○●]\t/).map(ing => ing.trim()).filter(ing => ing.length > 0);
+  } else if (hasNewlines) {
     // Split by newlines first
     const lines = text.split('\n');
 

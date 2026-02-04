@@ -165,6 +165,35 @@ describe('parseIngredients', () => {
     });
   });
 
+  describe('tab-separated bullet points', () => {
+    it('should split ingredients separated by tab-bullet-tab pattern', () => {
+      const input = '1 cup frozen Italian plums \t•\t1 banana (fresh or frozen) \t•\t½ cup plain Greek yogurt';
+      expect(parseIngredients(input)).toEqual([
+        '1 cup frozen Italian plums',
+        '1 banana (fresh or frozen)',
+        '½ cup plain Greek yogurt',
+      ]);
+    });
+
+    it('should handle multiple tab-separated bullets', () => {
+      const input = '1 cup milk \t•\t2 tbsp honey \t•\t1 banana';
+      expect(parseIngredients(input)).toEqual([
+        '1 cup milk',
+        '2 tbsp honey',
+        '1 banana',
+      ]);
+    });
+
+    it('should handle different bullet characters with tabs', () => {
+      const input = '1 cup milk \t-\t2 tbsp honey \t*\t1 banana';
+      expect(parseIngredients(input)).toEqual([
+        '1 cup milk',
+        '2 tbsp honey',
+        '1 banana',
+      ]);
+    });
+  });
+
   describe('comma-separated ingredients', () => {
     it('should split by commas when each segment has a quantity', () => {
       const input = '1 banana, 1 cup milk, 2 tbsp honey';
