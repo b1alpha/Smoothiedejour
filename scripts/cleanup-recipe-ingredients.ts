@@ -2,6 +2,10 @@
  * Cleanup script to fix recipes that were entered with a single long ingredient string
  * that should be split into multiple ingredients.
  * 
+ * Also performs heuristic-based classification of recipes to detect:
+ * - containsNuts: true if any ingredient matches nut keywords
+ * - containsFat: true if any ingredient matches fat keywords
+ * 
  * Usage:
  *   # Option 1: Set environment variables directly
  *   SUPABASE_URL=your_url SERVICE_ROLE_KEY=your_key npx tsx scripts/cleanup-recipe-ingredients.ts
@@ -21,6 +25,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { parseIngredients } from '../src/utils/parseIngredients.ts';
+import { classifyIngredients, config as keywordsConfig } from '../src/utils/ingredientClassifier.ts';
 
 // Try to load .env.local if it exists
 const __filename = fileURLToPath(import.meta.url);
@@ -103,40 +108,96 @@ async function cleanupRecipes() {
     const recipes = data.recipes || [];
 
     console.log(`📦 Found ${recipes.length} recipes`);
+    console.log(`🔍 Using keywords config: ${keywordsConfig.version}\n`);
 
-    let fixedCount = 0;
+    let ingredientFixCount = 0;
+    let classificationFixCount = 0;
     let skippedCount = 0;
-    const fixedRecipes: Array<{ id: string; name: string; before: string[]; after: string[] }> = [];
+    const fixedRecipes: Array<{
+      id: string;
+      name: string;
+      ingredientsBefore?: string[];
+      ingredientsAfter?: string[];
+      nutsBefore?: boolean;
+      nutsAfter?: boolean;
+      fatBefore?: boolean;
+      fatAfter?: boolean;
+    }> = [];
 
     for (const recipe of recipes) {
-      // Check if ingredients array has only 1 element
-      if (!Array.isArray(recipe.ingredients) || recipe.ingredients.length !== 1) {
-        skippedCount++;
-        continue;
+      let needsUpdate = false;
+      const updatedRecipe = { ...recipe };
+      const fixDetails: (typeof fixedRecipes)[number] = { id: recipe.id, name: recipe.name };
+
+      // Get current ingredients (may need parsing)
+      let ingredients: string[] = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+
+      // === Step 1: Fix single-ingredient parsing ===
+      if (ingredients.length === 1) {
+        const singleIngredient = ingredients[0];
+        const parsed = parseIngredients(singleIngredient);
+
+        if (parsed.length > 1) {
+          console.log(`🔧 Splitting ingredients: "${recipe.name}" by ${recipe.contributor}`);
+          console.log(`   Before: [${ingredients.length} ingredient] → After: [${parsed.length} ingredients]`);
+
+          fixDetails.ingredientsBefore = ingredients;
+          fixDetails.ingredientsAfter = parsed;
+          ingredients = parsed;
+          updatedRecipe.ingredients = parsed;
+          needsUpdate = true;
+          ingredientFixCount++;
+        }
       }
 
-      const singleIngredient = recipe.ingredients[0];
-      
-      // Try to parse it - if it results in multiple ingredients, it needs fixing
-      const parsed = parseIngredients(singleIngredient);
-      
-      if (parsed.length > 1) {
-        console.log(`\n🔧 Fixing recipe: "${recipe.name}" by ${recipe.contributor}`);
-        console.log(`   Before: [${recipe.ingredients.length} ingredient]`);
-        console.log(`   After:  [${parsed.length} ingredients]`);
-        console.log(`   Sample: "${parsed[0]}", "${parsed[1]}", ...`);
+      // === Step 2: Classify nuts and fat ===
+      const classification = classifyIngredients(ingredients);
+      const currentNuts = Boolean(recipe.containsNuts);
+      const currentFat = Boolean(recipe.containsFat);
 
-        // Update the recipe
+      if (classification.containsNuts !== currentNuts) {
+        console.log(`🥜 Updating containsNuts: "${recipe.name}"`);
+        console.log(`   ${currentNuts} → ${classification.containsNuts}`);
+        if (classification.nutDetails.matchedIncludes.length > 0) {
+          console.log(`   Matched: ${classification.nutDetails.matchedIncludes.slice(0, 3).join(', ')}${classification.nutDetails.matchedIncludes.length > 3 ? '...' : ''}`);
+        }
+        if (classification.nutDetails.matchedExcludes.length > 0) {
+          console.log(`   Excludes: ${classification.nutDetails.matchedExcludes.join(', ')}`);
+        }
+
+        fixDetails.nutsBefore = currentNuts;
+        fixDetails.nutsAfter = classification.containsNuts;
+        updatedRecipe.containsNuts = classification.containsNuts;
+        needsUpdate = true;
+        if (!fixDetails.ingredientsBefore) classificationFixCount++;
+      }
+
+      if (classification.containsFat !== currentFat) {
+        console.log(`🥑 Updating containsFat: "${recipe.name}"`);
+        console.log(`   ${currentFat} → ${classification.containsFat}`);
+        if (classification.fatDetails.matchedIncludes.length > 0) {
+          console.log(`   Matched: ${classification.fatDetails.matchedIncludes.slice(0, 3).join(', ')}${classification.fatDetails.matchedIncludes.length > 3 ? '...' : ''}`);
+        }
+        if (classification.fatDetails.matchedExcludes.length > 0) {
+          console.log(`   Excludes: ${classification.fatDetails.matchedExcludes.join(', ')}`);
+        }
+
+        fixDetails.fatBefore = currentFat;
+        fixDetails.fatAfter = classification.containsFat;
+        updatedRecipe.containsFat = classification.containsFat;
+        needsUpdate = true;
+        if (!fixDetails.ingredientsBefore && fixDetails.nutsBefore === undefined) classificationFixCount++;
+      }
+
+      // === Step 3: Update if needed ===
+      if (needsUpdate) {
         const updateResponse = await fetch(`${supabaseUrl}/functions/v1/recipes/${encodeURIComponent(recipe.id)}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${serviceRoleKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            ...recipe,
-            ingredients: parsed,
-          }),
+          body: JSON.stringify(updatedRecipe),
         });
 
         if (!updateResponse.ok) {
@@ -145,13 +206,8 @@ async function cleanupRecipes() {
           continue;
         }
 
-        fixedCount++;
-        fixedRecipes.push({
-          id: recipe.id,
-          name: recipe.name,
-          before: recipe.ingredients,
-          after: parsed,
-        });
+        fixedRecipes.push(fixDetails);
+        console.log(`   ✅ Updated successfully\n`);
       } else {
         skippedCount++;
       }
@@ -160,16 +216,28 @@ async function cleanupRecipes() {
     console.log("\n" + "=".repeat(60));
     console.log("📊 Summary:");
     console.log(`   Total recipes: ${recipes.length}`);
-    console.log(`   Fixed: ${fixedCount}`);
-    console.log(`   Skipped: ${skippedCount}`);
-    
-    if (fixedCount > 0) {
-      console.log("\n✅ Successfully fixed recipes:");
+    console.log(`   Ingredient fixes: ${ingredientFixCount}`);
+    console.log(`   Classification fixes: ${classificationFixCount}`);
+    console.log(`   Total updated: ${fixedRecipes.length}`);
+    console.log(`   Skipped (no changes): ${skippedCount}`);
+
+    if (fixedRecipes.length > 0) {
+      console.log("\n✅ Successfully updated recipes:");
       fixedRecipes.forEach((r, i) => {
-        console.log(`   ${i + 1}. "${r.name}" (${r.before.length} → ${r.after.length} ingredients)`);
+        const changes: string[] = [];
+        if (r.ingredientsAfter) {
+          changes.push(`ingredients: ${r.ingredientsBefore?.length} → ${r.ingredientsAfter.length}`);
+        }
+        if (r.nutsAfter !== undefined) {
+          changes.push(`nuts: ${r.nutsBefore} → ${r.nutsAfter}`);
+        }
+        if (r.fatAfter !== undefined) {
+          changes.push(`fat: ${r.fatBefore} → ${r.fatAfter}`);
+        }
+        console.log(`   ${i + 1}. "${r.name}" (${changes.join(', ')})`);
       });
     } else {
-      console.log("\n✨ No recipes needed fixing!");
+      console.log("\n✨ No recipes needed updating!");
     }
 
   } catch (error) {
