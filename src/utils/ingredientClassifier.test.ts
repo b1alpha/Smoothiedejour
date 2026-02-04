@@ -229,6 +229,34 @@ describe('ingredientClassifier', () => {
         expect(result.containsFat).toBe(false);
       });
 
+      it('should NOT detect 0% milk as containing fat', () => {
+        const result = classifyIngredients(['1 cup 0% milk']);
+        expect(result.containsFat).toBe(false);
+      });
+
+      it('should NOT detect 0% Greek yogurt as containing fat', () => {
+        const result = classifyIngredients(['½ cup 0% Greek yogurt']);
+        expect(result.containsFat).toBe(false);
+      });
+
+      it('should detect fat in ingredients with decimal quantities', () => {
+        // Regression test: "0%" exclude should not match decimal quantities like "0.5"
+        const result = classifyIngredients(['0.5 cup peanut butter']);
+        expect(result.containsFat).toBe(true);
+      });
+
+      it('should detect fat with leading zero decimal quantities', () => {
+        // Regression test: "0.25" should not be confused with "0%"
+        const result = classifyIngredients(['0.25 cup coconut milk']);
+        expect(result.containsFat).toBe(true);
+      });
+
+      it('should detect nuts in ingredients with decimal quantities', () => {
+        // Regression test: decimal quantities should not interfere with classification
+        const result = classifyIngredients(['0.25 cup almonds']);
+        expect(result.containsNuts).toBe(true);
+      });
+
       it('should detect fat when non-fat and fat items are both present', () => {
         const result = classifyIngredients([
           '1 cup nonfat yogurt',

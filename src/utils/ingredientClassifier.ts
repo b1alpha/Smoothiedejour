@@ -58,25 +58,41 @@ export function containsKeyword(normalizedText: string, keyword: string): boolea
   return regex.test(normalizedText);
 }
 
+// Raw patterns to check BEFORE normalization (patterns that would be lost after normalization)
+const RAW_FAT_EXCLUDES = [
+  /\b0\s*%/i,  // "0%" or "0 %" - indicates zero fat content
+];
+
 /**
  * Check ingredients against a keywords list.
  * Returns true if any ingredient matches an include keyword WITHOUT also matching an exclude.
  * Excludes are applied per-ingredient, not globally.
  */
-export function matchesKeywords(ingredients: string[], keywords: Keywords): MatchResult {
+export function matchesKeywords(ingredients: string[], keywords: Keywords, rawExcludes: RegExp[] = []): MatchResult {
   const matchedIncludes: string[] = [];
   const matchedExcludes: string[] = [];
 
   for (const ingredient of ingredients) {
     const normalized = normalize(ingredient);
 
-    // Check if this specific ingredient matches any exclude
+    // Check raw patterns first (before normalization would strip special chars)
     let isExcluded = false;
-    for (const exclude of keywords.exclude) {
-      if (containsKeyword(normalized, exclude)) {
-        matchedExcludes.push(`"${ingredient}" excluded by "${exclude}"`);
+    for (const rawPattern of rawExcludes) {
+      if (rawPattern.test(ingredient)) {
+        matchedExcludes.push(`"${ingredient}" excluded by raw pattern "${rawPattern.source}"`);
         isExcluded = true;
-        break; // One exclude is enough to skip this ingredient
+        break;
+      }
+    }
+
+    // Check normalized excludes
+    if (!isExcluded) {
+      for (const exclude of keywords.exclude) {
+        if (containsKeyword(normalized, exclude)) {
+          matchedExcludes.push(`"${ingredient}" excluded by "${exclude}"`);
+          isExcluded = true;
+          break; // One exclude is enough to skip this ingredient
+        }
       }
     }
 
@@ -102,7 +118,8 @@ export function matchesKeywords(ingredients: string[], keywords: Keywords): Matc
  */
 export function classifyIngredients(ingredients: string[]): ClassificationResult {
   const nutResult = matchesKeywords(ingredients, config.nuts);
-  const fatResult = matchesKeywords(ingredients, config.fat);
+  // Fat detection uses raw excludes for patterns like "0%" that get lost after normalization
+  const fatResult = matchesKeywords(ingredients, config.fat, RAW_FAT_EXCLUDES);
 
   return {
     containsNuts: nutResult.matches,
