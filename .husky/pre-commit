@@ -1,2 +1,6 @@
+# Auto-fix what can be fixed, then run strict lint to catch any remaining issues
 npm run lint:fix
-npm test
+npm run lint
+
+# Run tests (non-watch mode to match CI)
+npm run test:run

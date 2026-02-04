@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 "use client";
 
 import * as React from "react";
@@ -599,12 +600,7 @@ function SidebarMenuBadge({
   );
 }
 
-// Generate random width value outside component to avoid impure function during render
-let skeletonWidthSeed = 0;
-function getNextSkeletonWidth(): string {
-  skeletonWidthSeed = (skeletonWidthSeed + 1) % 40;
-  return `${skeletonWidthSeed + 50}%`;
-}
+import { getNextSkeletonWidth } from "./get-next-skeleton-width";
 
 function SidebarMenuSkeleton({
   className,
