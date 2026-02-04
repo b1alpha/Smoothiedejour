@@ -597,10 +597,10 @@ describe('Delete Recipe Dialog', () => {
     expect(container?.textContent).toContain('🗑️');
     expect(container?.textContent).toContain('Recipe deleted');
 
-    // Wait for message to disappear (after 2 seconds)
+    // Wait for message to disappear (after 3 seconds display + animation time)
     await waitFor(() => {
       expect(screen.queryByText('Recipe deleted')).not.toBeInTheDocument();
-    }, { timeout: 3000 });
+    }, { timeout: 5000 });
   });
 });
 
