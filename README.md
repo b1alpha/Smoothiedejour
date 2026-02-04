@@ -1,4 +1,4 @@
-# Smoothie de Jour App (Community)
+# Smoothie du Jour App (Community)
 
 A community-driven smoothie recipe app built with React, Vite, and TypeScript.
 

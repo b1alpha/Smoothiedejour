@@ -31,7 +31,7 @@ test.describe('Delete Dialog', () => {
     });
 
     await page.goto('/');
-    await expect(page.getByText('Smoothie de Jour')).toBeVisible();
+    await expect(page.getByText('Smoothie du Jour')).toBeVisible();
   });
 
   test('should open delete dialog when delete button is clicked', async ({ page }) => {

@@ -611,7 +611,7 @@ export default function App() {
                 <div className="w-10"></div>
               )}
             </div>
-            <h2 className="text-purple-600">Smoothie de Jour</h2>
+            <h2 className="text-purple-600">Smoothie du Jour</h2>
             <p className="text-sm text-gray-600 mt-1">
               Community recipes, served fresh • {allRecipes.length} recipes
             </p>

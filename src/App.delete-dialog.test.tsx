@@ -82,7 +82,7 @@ describe('Delete Recipe Dialog', () => {
 
     // Wait for app to load
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     // Click "Get Another Recipe" to show a recipe
@@ -121,7 +121,7 @@ describe('Delete Recipe Dialog', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -159,7 +159,7 @@ describe('Delete Recipe Dialog', () => {
     const { container } = renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -217,7 +217,7 @@ describe('Delete Recipe Dialog', () => {
     const { container } = renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     // First, check what z-index the contribute modal uses (z-50)
@@ -274,7 +274,7 @@ describe('Delete Recipe Dialog', () => {
     const { container } = renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -312,7 +312,7 @@ describe('Delete Recipe Dialog', () => {
     const { container } = renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -378,7 +378,7 @@ describe('Delete Recipe Dialog', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     const getRecipeButton = await screen.findByRole('button', { name: /get another recipe/i });
@@ -429,7 +429,7 @@ describe('Delete Recipe Dialog', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     // Get a recipe to display
@@ -482,7 +482,7 @@ describe('Delete Recipe Dialog', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     // Verify recipe exists in the list initially
@@ -539,7 +539,7 @@ describe('Delete Recipe Dialog', () => {
     renderApp();
 
     await waitFor(() => {
-      expect(screen.getByText('Smoothie de Jour')).toBeInTheDocument();
+      expect(screen.getByText('Smoothie du Jour')).toBeInTheDocument();
     });
 
     // Get a recipe to display
